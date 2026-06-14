@@ -8,6 +8,13 @@ export function AuthProvider({ children }) {
   const [ready, setReady] = useState(false);
 
   const refresh = useCallback(async () => {
+    // Skip the bootstrap /me probe if we have no token — avoids harmless 401 noise.
+    const token = typeof window !== "undefined" ? localStorage.getItem("soa_token") : null;
+    if (!token) {
+      setUser(false);
+      setReady(true);
+      return;
+    }
     try {
       const { data } = await api.get("/auth/me");
       setUser(data.user);

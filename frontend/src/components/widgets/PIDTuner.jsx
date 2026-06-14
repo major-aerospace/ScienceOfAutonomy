@@ -88,7 +88,7 @@ export default function PIDTuner() {
           <div className="absolute bottom-2 left-3 soa-mono text-[10px] tracking-widest text-neutral-400">SETPOINT · 1.0 m</div>
           <div className="absolute top-2 right-3 soa-mono text-[10px] tracking-widest text-neutral-400">ALTITUDE · {current.y.toFixed(2)}</div>
         </div>
-        <div className="bg-white rounded-sm h-[260px] p-2">
+        <div className="bg-white rounded-sm h-[260px] p-2 min-h-[200px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ left: 0, right: 8, top: 8, bottom: 8 }}>
               <CartesianGrid stroke="#EEE" />
