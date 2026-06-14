@@ -1,0 +1,107 @@
+{
+  "project": "Science of Autonomy",
+  "theme": "Light",
+  "archetype": "Archetype 4: Swiss & High-Contrast",
+  "design_principles": [
+    "Visual-first, text-minimal: Pedagogy through interaction, not reading. If a screen is mostly text, it has failed.",
+    "Science Museum + Engineering Blueprint: Clean, neutral, optimistic, and highly structured.",
+    "Vendor-neutral: No military/defense aesthetics, no contractor logos, no toy aesthetics.",
+    "Instrument Panel Feel: Technical typography for numerics, sharp geometries, and dedicated widget zones."
+  ],
+  "colors": {
+    "background": "#FAFAFA",
+    "surface": "#FFFFFF",
+    "surface_dark": "#0A0A0A",
+    "border": "#E5E5E5",
+    "border_dark": "#27272A",
+    "primary": "#0047FF",
+    "primary_hover": "#0038CC",
+    "accent_red": "#FF3B30",
+    "accent_yellow": "#FFCC00",
+    "accent_green": "#00C759",
+    "text_primary": "#111111",
+    "text_secondary": "#555555",
+    "text_inverse": "#FFFFFF",
+    "text_tertiary": "#888888"
+  },
+  "typography": {
+    "fonts_to_install": [
+      "@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;400;700;900&display=swap');"
+    ],
+    "headings": {
+      "family": "font-['Outfit',sans-serif]",
+      "h1": "text-5xl md:text-7xl font-black tracking-tighter leading-none text-text_primary",
+      "h2": "text-3xl md:text-5xl font-extrabold tracking-tight text-text_primary",
+      "h3": "text-xl md:text-2xl font-bold tracking-tight text-text_primary"
+    },
+    "body": {
+      "family": "font-['IBM_Plex_Sans',sans-serif]",
+      "base": "text-base md:text-lg text-text_secondary leading-relaxed",
+      "small": "text-sm text-text_tertiary leading-snug"
+    },
+    "technical": {
+      "family": "font-['JetBrains_Mono',monospace]",
+      "readout": "text-sm font-bold tracking-tight uppercase text-primary",
+      "data_large": "text-4xl font-bold tracking-tighter text-text_primary",
+      "label": "text-xs font-medium tracking-widest uppercase text-text_secondary"
+    }
+  },
+  "spacing_and_layout": {
+    "generous_whitespace": "Use p-12 to p-24 between major vertical sections to allow the science to 'breathe'.",
+    "grid_dashboard": "grid grid-cols-1 md:grid-cols-4 gap-6",
+    "grid_bento": "grid grid-cols-1 md:grid-cols-12 gap-8",
+    "instrument_padding": "p-6 md:p-8 for cards and interactive widgets."
+  },
+  "components": {
+    "card": "bg-white border-2 border-neutral-200 rounded-sm p-6 shadow-sm hover:border-primary transition-colors duration-200",
+    "interactive_widget_panel": "bg-[#0A0A0A] rounded-md border border-neutral-800 p-6 shadow-xl overflow-hidden relative",
+    "button_primary": "bg-primary text-white font-['JetBrains_Mono'] font-bold uppercase tracking-wider text-sm px-8 py-4 rounded-sm border-2 border-primary hover:bg-primary_hover hover:-translate-y-1 hover:shadow-[4px_4px_0_0_#111111] transition-all duration-200",
+    "button_secondary": "bg-transparent text-text_primary font-['JetBrains_Mono'] font-bold uppercase tracking-wider text-sm px-8 py-4 rounded-sm border-2 border-neutral-300 hover:border-text_primary hover:-translate-y-1 hover:shadow-[4px_4px_0_0_#111111] transition-all duration-200",
+    "badge": "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-['JetBrains_Mono'] font-medium bg-neutral-100 text-neutral-800 border border-neutral-200"
+  },
+  "motion": {
+    "philosophy": "Motion is pedagogy. Use animations strictly to explain cause-and-effect state changes (e.g., slider moves -> graph trace draws). No decorative bouncing.",
+    "hover_state": "hover:-translate-y-1 transition-transform duration-200",
+    "data_change": "animate-pulse for 300ms when a value updates."
+  },
+  "icons": {
+    "library": "lucide-react",
+    "rules": "Use stroke-width 1.5. Clean, technical geometry. Avoid filled or playful icons."
+  },
+  "media": {
+    "image_urls": [
+      {
+        "category": "hero_drone",
+        "url": "https://images.unsplash.com/photo-1579829366248-204fe8413f31?auto=format&fit=crop&q=80&w=2000",
+        "description": "Sleek modern white drone isolated on a clean background, ideal for the hero section."
+      },
+      {
+        "category": "sensor_board",
+        "url": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=1200",
+        "description": "Macro circuit board / technical sensing unit for sensing and perception modules."
+      },
+      {
+        "category": "blueprint_abstract",
+        "url": "https://images.unsplash.com/photo-1503437313881-503a9122640e?auto=format&fit=crop&q=80&w=1200",
+        "description": "Architectural / geometric abstract lines serving as tech-neutral background textures."
+      },
+      {
+        "category": "swarm_abstract",
+        "url": "https://images.unsplash.com/photo-1558470598-a5dda9640f68?auto=format&fit=crop&q=80&w=1200",
+        "description": "Flock of birds representing the swarm autonomy concept neutrally."
+      }
+    ]
+  },
+  "accessibility": {
+    "testing_requirements": "All interactive elements, buttons, menus, and form inputs MUST include a `data-testid` attribute formatted as kebab-case-role (e.g. data-testid='start-lesson-button').",
+    "contrast": "Maintain WCAG AA compliance. Use high-contrast borders and text."
+  },
+  "instructions_to_main_agent": [
+    "DO NOT use Shadcn default styling blindly. Override radii to 'rounded-sm' and borders to 2px to match the 'Engineering Blueprint' aesthetic.",
+    "Use Recharts for the PID Tuner graph and Dronability Assessment radar chart.",
+    "Implement the 'Interactive Widget Panel' in dark mode to contrast with the light theme page, giving it a tactile 'Instrument Panel' feel.",
+    "Ensure all fonts (Outfit, IBM Plex Sans, JetBrains Mono) are imported and applied correctly.",
+    "For 3D elements (Exploded Drone), if React Three Fiber is too complex for the MVP, use a layered 2.5D interactive SVG or high-res image with absolutely positioned interactive 'hotspots' that pulse.",
+    "Text must be minimal. Replace descriptive paragraphs with tooltips, side-panel take-aways, or data-readouts."
+  ]
+}
