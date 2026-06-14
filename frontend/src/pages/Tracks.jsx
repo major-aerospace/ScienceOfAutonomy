@@ -1,0 +1,71 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { api } from "@/lib/api";
+import { TID } from "@/lib/tids";
+import { ArrowRight, Lock } from "lucide-react";
+
+const COMING_SOON = [
+  { id: "track-sensing", title: "Sensing & Perception" },
+  { id: "track-comms", title: "Communications & Connectivity" },
+  { id: "track-stack", title: "Autonomy Stack & AI" },
+  { id: "track-swarms", title: "Multi-Agent & Swarms" },
+  { id: "track-human", title: "Human Factors & Operations" },
+  { id: "track-safety", title: "Safety, Airspace & Ethics" },
+  { id: "track-apps", title: "Drones in the Real World" },
+];
+
+export default function Tracks() {
+  const [tracks, setTracks] = useState([]);
+  useEffect(() => {
+    api.get("/tracks").then(({ data }) => setTracks(data.tracks || []));
+  }, []);
+
+  return (
+    <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="soa-mono text-[11px] tracking-widest text-[#0047FF]">CURRICULUM</div>
+      <h1 className="soa-display text-4xl md:text-6xl font-black tracking-tighter mt-2">
+        Track → Module → Lesson
+      </h1>
+      <p className="text-[rgb(var(--soa-ink-2))] mt-3 max-w-2xl">
+        Each track moves from the underlying science, to a present-day component, to where it matters in the world. Visual-first throughout.
+      </p>
+
+      <div className="grid md:grid-cols-3 gap-6 mt-10">
+        {tracks.map((t) => (
+          <Link
+            key={t.id}
+            to={`/tracks/${t.id}`}
+            data-testid={TID.trackCard(t.id)}
+            className="soa-card soa-card-clickable p-6 relative group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">TRACK · {String(t.order).padStart(2, "0")}</div>
+              <span className="soa-chip soa-chip-primary">LIVE</span>
+            </div>
+            <h2 className="soa-display text-2xl font-bold mt-3 leading-tight">{t.title}</h2>
+            <p className="text-sm text-[rgb(var(--soa-ink-2))] mt-2">{t.summary}</p>
+            <div className="flex items-center justify-between mt-6 soa-mono text-[11px] tracking-widest text-[rgb(var(--soa-ink-2))]">
+              <span>{t.lessonCount} LESSONS · {t.moduleCount} MODULES</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" strokeWidth={1.5} />
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      <div className="mt-14">
+        <div className="soa-mono text-[11px] tracking-widest text-[rgb(var(--soa-ink-3))]">COMING NEXT · 07 TRACKS</div>
+        <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-3 mt-3">
+          {COMING_SOON.map((t) => (
+            <div key={t.id} className="soa-card p-4 flex items-center justify-between opacity-60">
+              <div>
+                <div className="soa-display text-sm font-bold">{t.title}</div>
+                <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))] mt-1">SCHEDULED</div>
+              </div>
+              <Lock className="w-4 h-4 text-[rgb(var(--soa-ink-3))]" strokeWidth={1.5} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

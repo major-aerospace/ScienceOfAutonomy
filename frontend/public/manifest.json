@@ -1,0 +1,10 @@
+{
+  "short_name": "Science of Autonomy",
+  "name": "Science of Autonomy — Interactive Learning",
+  "description": "Visual-first lessons for the science of unmanned and autonomous systems.",
+  "icons": [],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#0047FF",
+  "background_color": "#FAFAFA"
+}

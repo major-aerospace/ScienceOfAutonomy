@@ -1,0 +1,39 @@
+{
+  "summary": "First full e2e test of Science of Autonomy MVP. Backend: 16/16 pytest tests pass (root, tracks x3, foundations modules/5 lessons, PID lesson with quiz+socialClip+prev/next, register/login/me with Bearer, admin seed login, complete-lesson XP award + idempotency, assessment recommendedTrack mapping, social-clips per lesson, calendar.csv with Content-Disposition). Frontend: landing renders 3D drone canvas + 3 track cards + Dronability CTA; register -> /onboarding -> /tracks/{goal}; /tracks shows 3 live tracks; foundations track detail lists 5 lesson rows; /lessons/l-pid renders PID Tuner widget (P/I/D sliders + Canvas), Quiz works (CHECK 1/2, answers [0,1] mark correct); Complete lesson awards 40 XP visible in nav badge and Dashboard (xp=40, level=2); Studio shows 16 social clips and CSV download link works; Assessment Start advances to Mental Rotation 1/6.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Lesson page (PID)", "issues": ["Recharts console warning: 'The width(-1) and height(-1) of chart should be greater than 0' fires during first mount of the step-response graph. Cosmetic only, chart still renders after layout settles, but the parent container should have a guaranteed min-height to silence the warning."]},
+      {"screen": "Landing (unauthenticated)", "issues": ["Two 401 errors logged to console from initial /api/auth/me probe for guests. Expected behavior, but it pollutes the console — consider suppressing the auth bootstrap fetch when no token is in localStorage."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_backend_api.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Optional: skip the initial /api/auth/me call on the landing page when no soa_token is present in localStorage to avoid harmless 401s in the console.",
+    "Optional: give the step-response chart container an explicit min-height (e.g., 200px) to silence the Recharts width=-1/height=-1 warning on first render.",
+    "Optional: Drone3D.jsx in landing shows a deprecation warning from three.js (THREE.Clock); non-blocking."
+  ],
+  "critical_code_review_comments": [
+    "server.py:104 xp_to_level uses sqrt curve — fine. Streak logic in /progress/complete always increments on a 'different day' (never resets on a gap). Per spec 'streak' should reset to 1 when there's a missed day; current implementation also increments when the user returns after a multi-day gap. Consider comparing last_active_day to today-1 to differentiate consecutive vs gapped activity.",
+    "server.py CORSMiddleware uses allow_credentials=True with default allow_origins='*' (wildcard). Browsers reject credentialed requests against a wildcard origin — works today only because the frontend uses Bearer in Authorization header, not cookies. If you intend the httpOnly auth_token cookie to actually flow, CORS_ORIGINS must list explicit origins.",
+    "server.py uses @app.on_event('startup'/'shutdown') which is deprecated in FastAPI/Starlette; migrate to lifespan context manager.",
+    "Auth cookie is set with secure=True samesite='none' but path='/' — fine for prod HTTPS; will not be set on http://localhost.",
+    "register/login return token in the body AND set httpOnly cookie — that's redundant but acceptable. The frontend currently relies on Bearer only (withCredentials=false), so the cookie is effectively unused."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_backend_api.py (new)",
+    "/app/test_reports/pytest/pytest_results.xml (generated)"
+  ],
+  "success_rate": {"backend": "100% (16/16)", "frontend": "100% of requested flows"},
+  "test_credentials": "Admin seed verified: admin@scienceofautonomy.app / autonomy2026 — login returns role=admin. Fresh test users registered as TEST_user_*/TEST_ui_*/TEST_flow_* with password TestPass123!. NOTE: /app/memory/test_credentials.md does not exist; consider adding one.",
+  "seed_data_creation": "No new seed data created. Tests create TEST_-prefixed users on the fly; not cleaned up afterwards (acceptable for MVP but consider a teardown).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All MVP acceptance criteria verified end-to-end. Backend pytest suite at /app/backend/tests/test_backend_api.py is the regression baseline. PID quiz has 2 questions with answer indices [0,1]; user must answer BOTH to see lesson-complete-button. The step-response chart in PIDTuner emits a benign width=-1 warning on first mount. Two 401s from /api/auth/me on landing for guests are expected (not real bugs). Assessment flow not driven to completion in UI (Vigilance phase needs 35s real-time) — but backend /api/assessment/submit is fully tested.",
+  "rca of the issue": "No blocking issues. Minor improvements suggested in critical_code_review_comments and action_items."
+}
