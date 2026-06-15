@@ -46,8 +46,8 @@ export default function Landing() {
               </Link>
             </div>
             <div className="mt-6 flex items-center gap-6 soa-mono text-[11px] tracking-widest text-[rgb(var(--soa-ink-3))]">
-              <span>3 TRACKS · 15 LESSONS · LIVE</span>
-              <span>7 INTERACTIVE WIDGETS</span>
+              <span>10 TRACKS · 37 LESSONS · LIVE</span>
+              <span>11 INTERACTIVE WIDGETS</span>
             </div>
           </div>
 
@@ -125,11 +125,11 @@ export default function Landing() {
           })}
         </div>
 
-        {/* Coming next strip */}
+        {/* Full curriculum strip */}
         <div className="mt-10 border-t border-[rgb(var(--soa-line))] pt-6">
-          <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">COMING NEXT</div>
+          <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">FULL CURRICULUM · 10 TRACKS · ALL LIVE</div>
           <div className="flex flex-wrap gap-2 mt-2">
-            {["Sensing & Perception", "Comms & Connectivity", "Autonomy Stack & AI", "Multi-Agent & Swarms", "Human Factors", "Safety & Ethics", "Applications"].map((n) => (
+            {["Sensing & Perception", "Comms & Connectivity", "Autonomy Stack & AI", "Multi-Agent & Swarms", "Human Factors", "Safety & Ethics", "Real-World Applications"].map((n) => (
               <span key={n} className="soa-chip">{n}</span>
             ))}
           </div>

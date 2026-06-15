@@ -14,6 +14,7 @@ import Onboarding from "@/pages/Onboarding";
 import Assessment from "@/pages/Assessment";
 import Studio from "@/pages/Studio";
 import NotFound from "@/pages/NotFound";
+import Review from "@/pages/Review";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 
@@ -40,6 +41,7 @@ function Shell() {
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/assessment" element={<Assessment />} />
           <Route path="/studio" element={<Studio />} />
+          <Route path="/review" element={<ProtectedRoute><Review /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

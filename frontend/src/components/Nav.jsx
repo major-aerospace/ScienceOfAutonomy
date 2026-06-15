@@ -32,7 +32,10 @@ export default function Nav() {
           <NavLink data-testid={TID.navLinkAssessment} to="/assessment" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Dronability</NavLink>
           <NavLink data-testid={TID.navLinkStudio} to="/studio" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Studio</NavLink>
           {authed && (
-            <NavLink data-testid={TID.navLinkDashboard} to="/dashboard" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Dashboard</NavLink>
+            <>
+              <NavLink data-testid="nav-link-review" to="/review" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Review</NavLink>
+              <NavLink data-testid={TID.navLinkDashboard} to="/dashboard" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Dashboard</NavLink>
+            </>
           )}
         </nav>
 

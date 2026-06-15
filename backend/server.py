@@ -10,7 +10,7 @@ import csv
 import io
 import uuid
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Literal
 
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, Request, Response
@@ -68,6 +68,11 @@ class AssessmentSubmit(BaseModel):
     higher_order: float
     dispositional: float
     trainability_slope: float  # improvement delta, -1..1
+
+
+class ReviewAnswerBody(BaseModel):
+    review_id: str
+    correct: bool
 
 
 # --------------------------------------------------------------------------------------
@@ -268,19 +273,24 @@ async def complete_lesson(body: CompleteLessonBody, request: Request):
         today = datetime.now(timezone.utc).date().isoformat()
         last = user.get("last_active_day")
         streak = user.get("streak", 0)
-        if last is None:
-            streak = 1
-        elif last == today:
-            pass  # same day
-        else:
-            # consecutive day check (any prior day -> +1, gap -> reset)
-            streak = streak + 1
+        if last is None or last != today:
+            streak = streak + 1 if last else 1
         new_xp = user.get("xp", 0) + awarded
         new_level = xp_to_level(new_xp)
         await db.users.update_one(
             {"id": user["id"]},
             {"$set": {"xp": new_xp, "level": new_level, "streak": streak, "last_active_day": today}},
         )
+        # Spaced-repetition: if user missed any question, schedule a review.
+        if body.score < 1.0:
+            await db.reviews.insert_one({
+                "id": str(uuid.uuid4()),
+                "user_id": user["id"],
+                "lesson_id": body.lesson_id,
+                "ease": 1,  # interval index
+                "next_review_at": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            })
     return {"ok": True, "xpAwarded": awarded}
 
 
@@ -290,6 +300,96 @@ async def get_progress(request: Request):
     rows = await db.progress.find({"user_id": user["id"]}, {"_id": 0}).to_list(2000)
     fresh = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password_hash": 0})
     return {"progress": rows, "user": public_user(fresh)}
+
+
+# ---------- Adaptive learning ----------
+def _track_lesson_sequence(track):
+    return [lid for m in track["modules"] for lid in m["lessons"]]
+
+
+@api.get("/recommend/next")
+async def recommend_next(request: Request):
+    user = await get_optional_user(request, db)
+    # Default: first lesson of first track
+    default = LESSONS[TRACKS[0]["modules"][0]["lessons"][0]]
+    if not user:
+        return {"lesson": _public_lesson(default), "reason": "Start with the foundations."}
+    rows = await db.progress.find({"user_id": user["id"]}).to_list(2000)
+    completed = {r["lesson_id"] for r in rows if r.get("completed")}
+    # Build flat order across all tracks
+    flat = []
+    for t in sorted(TRACKS, key=lambda x: x["order"]):
+        flat.extend(_track_lesson_sequence(t))
+    # Find first not completed
+    for lid in flat:
+        if lid not in completed:
+            l = LESSONS[lid]
+            # If last completed lesson had a low score, suggest reviewing (recommend same)
+            last = max(rows, key=lambda r: r.get("completed_at", ""), default=None) if rows else None
+            if last and last.get("score", 1.0) < 0.5:
+                review_lesson = LESSONS.get(last["lesson_id"], l)
+                return {"lesson": _public_lesson(review_lesson), "reason": "Your last quiz was rough — let's revisit this one first."}
+            return {"lesson": _public_lesson(l), "reason": "Picking up where you left off."}
+    return {"lesson": None, "reason": "You've completed everything published. New tracks coming soon."}
+
+
+def _public_lesson(l):
+    return {"id": l["id"], "title": l["title"], "summary": l["summary"], "trackId": l["trackId"], "estMinutes": l["estMinutes"]}
+
+
+# ---------- Review queue (spaced repetition) ----------
+SR_INTERVALS_DAYS = [1, 3, 7, 14, 30]
+
+
+@api.get("/review/queue")
+async def review_queue(request: Request):
+    user = await get_current_user(request, db)
+    now_iso = datetime.now(timezone.utc).isoformat()
+    rows = await db.reviews.find(
+        {"user_id": user["id"], "next_review_at": {"$lte": now_iso}},
+        {"_id": 0},
+    ).sort("next_review_at", 1).to_list(50)
+    enriched = []
+    for r in rows:
+        l = LESSONS.get(r["lesson_id"])
+        if not l:
+            continue
+        enriched.append({
+            **r,
+            "lesson": {"id": l["id"], "title": l["title"], "trackId": l["trackId"], "summary": l["summary"]},
+            # Pick a sample question for quick recall
+            "sample_question": l["quiz"][0] if l.get("quiz") else None,
+        })
+    return {"items": enriched, "count": len(enriched)}
+
+
+@api.post("/review/answer")
+async def review_answer(body: ReviewAnswerBody, request: Request):
+    user = await get_current_user(request, db)
+    item = await db.reviews.find_one({"id": body.review_id, "user_id": user["id"]})
+    if not item:
+        raise HTTPException(404, "Review item not found")
+    if body.correct:
+        new_ease = min(item.get("ease", 1) + 1, len(SR_INTERVALS_DAYS))
+        if new_ease >= len(SR_INTERVALS_DAYS):
+            # Graduate — remove from review queue
+            await db.reviews.delete_one({"id": body.review_id})
+            return {"ok": True, "graduated": True}
+        days = SR_INTERVALS_DAYS[new_ease - 1]
+        next_iso = (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
+        await db.reviews.update_one(
+            {"id": body.review_id},
+            {"$set": {"ease": new_ease, "next_review_at": next_iso, "last_answered_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        return {"ok": True, "graduated": False, "next_in_days": days}
+    else:
+        # Reset to interval 1
+        next_iso = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+        await db.reviews.update_one(
+            {"id": body.review_id},
+            {"$set": {"ease": 1, "next_review_at": next_iso, "last_answered_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        return {"ok": True, "graduated": False, "next_in_days": 1}
 
 
 # ---------- Assessment ----------
@@ -389,6 +489,7 @@ async def on_startup():
     await db.users.create_index("email", unique=True)
     await db.progress.create_index([("user_id", 1), ("lesson_id", 1)], unique=True)
     await db.assessments.create_index("user_id")
+    await db.reviews.create_index([("user_id", 1), ("next_review_at", 1)])
     # seed admin
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com").lower()
     admin_pw = os.environ.get("ADMIN_PASSWORD", "admin123")

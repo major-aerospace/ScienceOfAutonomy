@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { api } from "./api";
+import { ensureStreakReminderScheduled, cancelStreakReminder } from "./notifications";
 
 const AuthCtx = createContext(null);
 
@@ -33,17 +34,20 @@ export function AuthProvider({ children }) {
     const { data } = await api.post("/auth/login", { email, password });
     if (data.token) localStorage.setItem("soa_token", data.token);
     setUser(data.user);
+    ensureStreakReminderScheduled().catch(() => {});
     return data.user;
   };
   const register = async (payload) => {
     const { data } = await api.post("/auth/register", payload);
     if (data.token) localStorage.setItem("soa_token", data.token);
     setUser(data.user);
+    ensureStreakReminderScheduled().catch(() => {});
     return data.user;
   };
   const logout = async () => {
     try { await api.post("/auth/logout"); } catch (e) {}
     localStorage.removeItem("soa_token");
+    cancelStreakReminder().catch(() => {});
     setUser(false);
   };
   const setGoal = async (goal) => {

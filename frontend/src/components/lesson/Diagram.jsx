@@ -1,4 +1,10 @@
 import { useEffect, useState } from "react";
+import {
+  SensorZoo, SensorViews, SlamBuild, RFWave, TelemetryFlow, LinkLossRTH, MeshNetwork,
+  SoftwareAnatomy, PerceptionPipeline, CVBoxes, OneToMany, Consensus, Resilience,
+  SALayers, GCSMock, MissionTimeline, AirspaceLayers, Geofence, EthicsScales,
+  Photogrammetry, NDVI, InspectionPath, SearchPattern, Frontiers,
+} from "./ExtraDiagrams";
 
 // Renders various small animated diagrams used in lessons.
 export default function Diagram({ id }) {
@@ -10,6 +16,31 @@ export default function Diagram({ id }) {
     case "fc-board": return <FCBoard />;
     case "gimbal-stabilize": return <GimbalStabilize />;
     case "no-gps-drift": return <NoGPS />;
+    // New diagrams for tracks 4–10
+    case "sensor-zoo": return <SensorZoo />;
+    case "sensor-views": return <SensorViews />;
+    case "slam-build": return <SlamBuild />;
+    case "rf-wave": return <RFWave />;
+    case "telemetry-flow": return <TelemetryFlow />;
+    case "link-loss-rth": return <LinkLossRTH />;
+    case "mesh-network": return <MeshNetwork />;
+    case "software-anatomy": return <SoftwareAnatomy />;
+    case "perception-pipeline": return <PerceptionPipeline />;
+    case "cv-bboxes": return <CVBoxes />;
+    case "one-to-many": return <OneToMany />;
+    case "consensus": return <Consensus />;
+    case "resilience": return <Resilience />;
+    case "sa-layers": return <SALayers />;
+    case "gcs-mock": return <GCSMock />;
+    case "mission-timeline": return <MissionTimeline />;
+    case "airspace-layers": return <AirspaceLayers />;
+    case "geofence": return <Geofence />;
+    case "ethics-scales": return <EthicsScales />;
+    case "photogrammetry": return <Photogrammetry />;
+    case "ndvi": return <NDVI />;
+    case "inspection-path": return <InspectionPath />;
+    case "search-pattern": return <SearchPattern />;
+    case "frontiers": return <Frontiers />;
     default: return null;
   }
 }

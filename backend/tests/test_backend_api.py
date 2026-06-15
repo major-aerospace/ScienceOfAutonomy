@@ -46,9 +46,10 @@ def test_tracks_returns_three(s):
     r = s.get(f"{API}/tracks")
     assert r.status_code == 200
     tracks = r.json()["tracks"]
-    assert len(tracks) == 3
+    # Phase 2: now 10 tracks. Verify the 3 MVP tracks are still present.
+    assert len(tracks) >= 3
     ids = {t["id"] for t in tracks}
-    assert {"track-foundations", "track-anatomy", "track-gnc"} == ids
+    assert {"track-foundations", "track-anatomy", "track-gnc"}.issubset(ids)
     for t in tracks:
         assert "title" in t and "lessonCount" in t and "moduleCount" in t
 
@@ -116,6 +117,8 @@ def test_admin_login(s):
 
 # ---------- Progress ----------
 def test_complete_lesson_awards_xp(s, auth_headers, test_user):
+    # Clear cookies so Bearer auth is honored (cookie takes precedence in get_current_user)
+    s.cookies.clear()
     r = s.post(f"{API}/progress/complete", json={"lesson_id": "l-pid", "score": 1.0}, headers=auth_headers)
     assert r.status_code == 200, r.text
     body = r.json()
@@ -169,10 +172,11 @@ def test_social_clips_one_per_lesson(s):
     r1 = s.get(f"{API}/studio/social-clips")
     assert r1.status_code == 200
     items = r1.json()["items"]
-    # Cross check with totals across the 3 tracks
+    # Phase 2: 10 tracks, 46 lessons -> 46 clips
+    tracks = s.get(f"{API}/tracks").json()["tracks"]
     total = 0
-    for tid in ["track-foundations", "track-anatomy", "track-gnc"]:
-        td = s.get(f"{API}/tracks/{tid}").json()
+    for t in tracks:
+        td = s.get(f"{API}/tracks/{t['id']}").json()
         total += sum(len(m["lessons"]) for m in td["modules"])
     assert len(items) == total, f"expected {total} clips, got {len(items)}"
     for it in items:

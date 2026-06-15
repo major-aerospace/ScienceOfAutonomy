@@ -76,6 +76,83 @@ TRACKS = [
             },
         ],
     },
+    {
+        "id": "track-sensing",
+        "order": 4,
+        "title": "Sensing & Perception",
+        "summary": "How a drone turns photons, accelerations and radio echoes into a model of the world.",
+        "color": "#0047FF",
+        "modules": [
+            {"id": "mod-sensing-1", "order": 1, "title": "The Sensor Zoo", "lessons": ["l-sensor-zoo", "l-seeing-world"]},
+            {"id": "mod-sensing-2", "order": 2, "title": "Estimation & Mapping", "lessons": ["l-filtering", "l-slam"]},
+        ],
+    },
+    {
+        "id": "track-comms",
+        "order": 5,
+        "title": "Communications & Connectivity",
+        "summary": "Radio, latency, link loss — and why autonomy is the answer when comms fail.",
+        "color": "#0047FF",
+        "modules": [
+            {"id": "mod-comms-1", "order": 1, "title": "RF & Datalinks", "lessons": ["l-rf-fundamentals", "l-telemetry"]},
+            {"id": "mod-comms-2", "order": 2, "title": "Loss & Networks", "lessons": ["l-link-loss", "l-mesh"]},
+        ],
+    },
+    {
+        "id": "track-stack",
+        "order": 6,
+        "title": "The Autonomy Stack & AI",
+        "summary": "From flight controller to companion computer — the pipeline that makes a drone think.",
+        "color": "#0047FF",
+        "modules": [
+            {"id": "mod-stack-1", "order": 1, "title": "Software Anatomy", "lessons": ["l-software-anatomy", "l-pipeline"]},
+            {"id": "mod-stack-2", "order": 2, "title": "Edge AI & Learning", "lessons": ["l-edge-ai", "l-cv-autonomy", "l-rl-intro"]},
+        ],
+    },
+    {
+        "id": "track-swarms",
+        "order": 7,
+        "title": "Multi-Agent Systems & Swarms",
+        "summary": "Why coordination is hard, and how simple rules produce emergent group behavior.",
+        "color": "#0047FF",
+        "modules": [
+            {"id": "mod-swarms-1", "order": 1, "title": "Emergence", "lessons": ["l-one-to-many", "l-emergent"]},
+            {"id": "mod-swarms-2", "order": 2, "title": "Coordination", "lessons": ["l-consensus", "l-resilience"]},
+        ],
+    },
+    {
+        "id": "track-human",
+        "order": 8,
+        "title": "Human Factors & Operations",
+        "summary": "The operator is half the system. Attention, workload, and the missions that drones really fly.",
+        "color": "#0047FF",
+        "modules": [
+            {"id": "mod-human-1", "order": 1, "title": "The Operator's Mind", "lessons": ["l-sa-levels", "l-workload"]},
+            {"id": "mod-human-2", "order": 2, "title": "Mission Lifecycle", "lessons": ["l-gcs-design", "l-mission-lifecycle"]},
+        ],
+    },
+    {
+        "id": "track-safety",
+        "order": 9,
+        "title": "Safety, Airspace & Ethics",
+        "summary": "How airspace is shared, how to design for failure, and the open questions of autonomous accountability.",
+        "color": "#0047FF",
+        "modules": [
+            {"id": "mod-safety-1", "order": 1, "title": "Airspace & Failure", "lessons": ["l-airspace", "l-design-for-failure"]},
+            {"id": "mod-safety-2", "order": 2, "title": "Ethics", "lessons": ["l-ethics"]},
+        ],
+    },
+    {
+        "id": "track-apps",
+        "order": 10,
+        "title": "Drones in the Real World",
+        "summary": "Where the science meets the field — mapping, agriculture, inspection, response and beyond.",
+        "color": "#0047FF",
+        "modules": [
+            {"id": "mod-apps-1", "order": 1, "title": "Production Use", "lessons": ["l-mapping", "l-agriculture", "l-inspection"]},
+            {"id": "mod-apps-2", "order": 2, "title": "Frontiers", "lessons": ["l-delivery", "l-public-safety", "l-frontiers"]},
+        ],
+    },
 ]
 
 
@@ -545,6 +622,427 @@ LESSONS = {
             "takeaway": "Eyes > inertia indoors.",
             "hashtags": ["#SLAM", "#navigation", "#drones"],
         },
+    },
+
+    # ============================================================
+    # TRACK 4 — SENSING & PERCEPTION
+    # ============================================================
+    "l-sensor-zoo": {
+        "id": "l-sensor-zoo", "moduleId": "mod-sensing-1", "trackId": "track-sensing", "order": 1,
+        "title": "The Sensor Zoo", "summary": "Each sensor measures something — and lies in its own way.", "estMinutes": 5,
+        "blocks": [
+            {"type": "diagram", "diagramId": "sensor-zoo"},
+            {"type": "caption", "text": "IMU is fast and drifty. GNSS is absolute and noisy. Cameras are rich and ambiguous."},
+            {"type": "takeaway", "text": "Pick sensors for what they don't lie about."},
+        ],
+        "quiz": [
+            _q("Which sensor gives an absolute position fix?", ["IMU", "Camera", "GNSS", "Barometer"], 2, "GNSS is the only one absolute."),
+            _q("Which sensor has the highest update rate?", ["GNSS", "IMU", "LiDAR", "Camera"], 1, "IMU runs at ~1 kHz."),
+        ],
+        "socialClip": {"hook": "Every drone sensor lies. Differently.", "coreIdea": "Strengths and failure modes.", "visualSuggestion": "Sensor cards with green/red dots.", "takeaway": "Fusion exploits differences.", "hashtags": ["#sensors", "#robotics"]},
+    },
+    "l-seeing-world": {
+        "id": "l-seeing-world", "moduleId": "mod-sensing-1", "trackId": "track-sensing", "order": 2,
+        "title": "Seeing the World", "summary": "Cameras, LiDAR, radar — each builds a different picture of the same scene.", "estMinutes": 4,
+        "blocks": [
+            {"type": "diagram", "diagramId": "sensor-views"},
+            {"type": "caption", "text": "A camera sees colour. LiDAR sees distance. Radar sees velocity."},
+            {"type": "takeaway", "text": "Truth depends on which sense you trust."},
+        ],
+        "quiz": [
+            _q("LiDAR primarily measures…", ["Color", "Distance", "Heat", "Sound"], 1, "LiDAR = laser ranging."),
+        ],
+        "socialClip": {"hook": "Three sensors. Same scene. Three different worlds.", "coreIdea": "Modality matters.", "visualSuggestion": "Triptych view.", "takeaway": "Modalities are not redundant.", "hashtags": ["#perception", "#lidar"]},
+    },
+    "l-filtering": {
+        "id": "l-filtering", "moduleId": "mod-sensing-2", "trackId": "track-sensing", "order": 1,
+        "title": "Filtering Intuition", "summary": "From average → complementary → Kalman. The noise-killer ladder.", "estMinutes": 5,
+        "blocks": [
+            {"type": "widget", "widgetId": "signal-noise"},
+            {"type": "caption", "text": "A filter trades responsiveness for smoothness."},
+            {"type": "takeaway", "text": "All filters are weighted memory."},
+            {"type": "deepdive", "text": "A Kalman filter maintains a belief (mean + covariance), predicts forward via a motion model, then updates with each measurement weighted by sensor variance."},
+        ],
+        "quiz": [
+            _q("A filter trades…", ["Mass for speed", "Responsiveness for smoothness", "Cost for power", "Range for accuracy"], 1, "Smoother output reacts slower."),
+        ],
+        "socialClip": {"hook": "Your IMU is screaming nonsense. What now?", "coreIdea": "Filter, don't trust.", "visualSuggestion": "Noisy line tamed into a smooth curve.", "takeaway": "Filters = weighted memory.", "hashtags": ["#kalman", "#sensors"]},
+    },
+    "l-slam": {
+        "id": "l-slam", "moduleId": "mod-sensing-2", "trackId": "track-sensing", "order": 2,
+        "title": "Mapping While Moving", "summary": "SLAM: building a map and locating yourself in it — at the same time.", "estMinutes": 5,
+        "blocks": [
+            {"type": "diagram", "diagramId": "slam-build"},
+            {"type": "caption", "text": "Loop-closure: when you recognize where you've been, error collapses."},
+            {"type": "takeaway", "text": "Locate by mapping. Map by locating."},
+        ],
+        "quiz": [
+            _q("SLAM stands for…", ["Speed-Level Auto-Mode", "Simultaneous Localization And Mapping", "Sensor-Linked Algorithmic Method", "Stereo Laser Auto-Mapping"], 1, "S = Simultaneous, L = Localization, A = And, M = Mapping."),
+        ],
+        "socialClip": {"hook": "Walk into a new room. Now make a map.", "coreIdea": "SLAM = both at once.", "visualSuggestion": "Map drawing itself as drone moves.", "takeaway": "Where you are is where the map says you are.", "hashtags": ["#SLAM", "#robotics"]},
+    },
+
+    # ============================================================
+    # TRACK 5 — COMMUNICATIONS
+    # ============================================================
+    "l-rf-fundamentals": {
+        "id": "l-rf-fundamentals", "moduleId": "mod-comms-1", "trackId": "track-comms", "order": 1,
+        "title": "RF Fundamentals", "summary": "Frequency, bandwidth, line-of-sight — the physics of the link.", "estMinutes": 4,
+        "blocks": [
+            {"type": "diagram", "diagramId": "rf-wave"},
+            {"type": "caption", "text": "More bandwidth costs more power and shrinks range."},
+            {"type": "takeaway", "text": "Range × bandwidth × power = pick two."},
+        ],
+        "quiz": [
+            _q("Higher frequency generally means…", ["Longer range", "More bandwidth, shorter range", "Lower power", "More antennas"], 1, "Higher freqs carry more data but attenuate faster."),
+        ],
+        "socialClip": {"hook": "Why does your drone lose link behind a tree?", "coreIdea": "Line of sight + frequency.", "visualSuggestion": "Wave bouncing off obstacles.", "takeaway": "RF is geometry.", "hashtags": ["#RF", "#radio"]},
+    },
+    "l-telemetry": {
+        "id": "l-telemetry", "moduleId": "mod-comms-1", "trackId": "track-comms", "order": 2,
+        "title": "Telemetry & Latency", "summary": "Command up. Video down. Every millisecond matters.", "estMinutes": 4,
+        "blocks": [
+            {"type": "diagram", "diagramId": "telemetry-flow"},
+            {"type": "caption", "text": "200 ms latency feels alive. 800 ms feels broken."},
+            {"type": "takeaway", "text": "Latency is the invisible budget."},
+        ],
+        "quiz": [
+            _q("Tele-operation generally needs latency below…", ["1 s", "300 ms", "10 ms", "1 ms"], 1, "Roughly 200–300 ms is the upper bound for direct control."),
+        ],
+        "socialClip": {"hook": "What 1 second of lag does to a pilot.", "coreIdea": "Latency budget.", "visualSuggestion": "Packet flow with rising timeline.", "takeaway": "Milliseconds steer drones.", "hashtags": ["#latency", "#networking"]},
+    },
+    "l-link-loss": {
+        "id": "l-link-loss", "moduleId": "mod-comms-2", "trackId": "track-comms", "order": 1,
+        "title": "Losing the Link", "summary": "When comms die, autonomy lives. Failsafes and return-to-home.", "estMinutes": 4,
+        "blocks": [
+            {"type": "diagram", "diagramId": "link-loss-rth"},
+            {"type": "caption", "text": "On link loss the drone keeps thinking. That's the point of autonomy."},
+            {"type": "takeaway", "text": "Autonomy is what survives a dead radio."},
+        ],
+        "quiz": [
+            _q("'RTH' stands for…", ["Real-Time Heading", "Return-To-Home", "Remote-Telemetry-Hub", "Roll-Then-Hover"], 1, "Return-To-Home failsafe."),
+        ],
+        "socialClip": {"hook": "Your radio dies. What does the drone do?", "coreIdea": "Failsafe = autonomy minimum.", "visualSuggestion": "Drone tracing path back to home.", "takeaway": "Autonomy is a parachute.", "hashtags": ["#failsafe", "#drones"]},
+    },
+    "l-mesh": {
+        "id": "l-mesh", "moduleId": "mod-comms-2", "trackId": "track-comms", "order": 2,
+        "title": "Mesh Networks", "summary": "When one radio isn't enough, the swarm becomes the radio.", "estMinutes": 4,
+        "blocks": [
+            {"type": "diagram", "diagramId": "mesh-network"},
+            {"type": "caption", "text": "Drop a node, re-route. Networks heal."},
+            {"type": "takeaway", "text": "Mesh = redundancy in shape."},
+        ],
+        "quiz": [
+            _q("When a mesh node fails…", ["The network collapses", "Traffic re-routes", "Everyone calls base", "The radio frequency changes"], 1, "Mesh routing protocols heal around failures."),
+        ],
+        "socialClip": {"hook": "When 1 drone isn't enough, the swarm becomes the radio.", "coreIdea": "Mesh networking.", "visualSuggestion": "Node graph re-routing.", "takeaway": "Networks heal.", "hashtags": ["#mesh", "#networking"]},
+    },
+
+    # ============================================================
+    # TRACK 6 — AUTONOMY STACK & AI
+    # ============================================================
+    "l-software-anatomy": {
+        "id": "l-software-anatomy", "moduleId": "mod-stack-1", "trackId": "track-stack", "order": 1,
+        "title": "Software Anatomy", "summary": "Flight controller, companion computer, ground station — three boxes, one mission.", "estMinutes": 4,
+        "blocks": [
+            {"type": "diagram", "diagramId": "software-anatomy"},
+            {"type": "caption", "text": "FC handles 'don't fall'. Companion handles 'think'. GCS handles 'humans'."},
+            {"type": "takeaway", "text": "Different brains for different deadlines."},
+        ],
+        "quiz": [
+            _q("Which runs the inner control loops at 1 kHz?", ["Companion computer", "Ground station", "Flight controller", "Cloud"], 2, "FC handles hard real-time."),
+        ],
+        "socialClip": {"hook": "Three computers in every modern drone. Here's why.", "coreIdea": "Layered compute.", "visualSuggestion": "Stacked boxes with arrows.", "takeaway": "Right brain for right deadline.", "hashtags": ["#autonomy", "#architecture"]},
+    },
+    "l-pipeline": {
+        "id": "l-pipeline", "moduleId": "mod-stack-1", "trackId": "track-stack", "order": 2,
+        "title": "Perception → Planning → Control", "summary": "Every autonomous machine runs the same three-stage pipeline.", "estMinutes": 5,
+        "blocks": [
+            {"type": "diagram", "diagramId": "perception-pipeline"},
+            {"type": "caption", "text": "See the world. Decide the move. Send the motors."},
+            {"type": "takeaway", "text": "Three stages. One mission per second, 1000 times a second."},
+        ],
+        "quiz": [
+            _q("Which stage produces motor commands?", ["Perception", "Planning", "Control", "Mapping"], 2, "Control issues actuator commands."),
+        ],
+        "socialClip": {"hook": "The 3 stages every autonomous machine runs.", "coreIdea": "P → P → C.", "visualSuggestion": "Pipeline with flowing data.", "takeaway": "Every autonomy is a pipe.", "hashtags": ["#robotics", "#pipeline"]},
+    },
+    "l-edge-ai": {
+        "id": "l-edge-ai", "moduleId": "mod-stack-2", "trackId": "track-stack", "order": 1,
+        "title": "Edge AI Trade-offs", "summary": "Smarter onboard means heavier, hotter, hungrier.", "estMinutes": 4,
+        "blocks": [
+            {"type": "chart", "chartId": "edge-ai"},
+            {"type": "caption", "text": "Compute × latency × power × weight — pick your battle."},
+            {"type": "takeaway", "text": "Onboard intelligence has a metabolic cost."},
+        ],
+        "quiz": [
+            _q("Sending video to the cloud trades…", ["Power for latency", "Latency for compute", "Range for weight", "Cost for trust"], 1, "You save compute on the drone at the cost of latency."),
+        ],
+        "socialClip": {"hook": "Why isn't AI just on the drone?", "coreIdea": "Compute has weight.", "visualSuggestion": "4-axis trade-off chart.", "takeaway": "Smart costs grams.", "hashtags": ["#edgeAI", "#drones"]},
+    },
+    "l-cv-autonomy": {
+        "id": "l-cv-autonomy", "moduleId": "mod-stack-2", "trackId": "track-stack", "order": 2,
+        "title": "Computer Vision for Autonomy", "summary": "Detection, tracking, segmentation — turning pixels into decisions.", "estMinutes": 4,
+        "blocks": [
+            {"type": "diagram", "diagramId": "cv-bboxes"},
+            {"type": "caption", "text": "Bounding boxes find. Trackers follow. Masks separate."},
+            {"type": "takeaway", "text": "Pixels become decisions when models attach meaning."},
+        ],
+        "quiz": [
+            _q("Tracking is harder than detection because…", ["Light is brighter", "Objects move and look different", "Cameras are slower", "Pixels are denser"], 1, "Identity must persist across frames despite motion/occlusion."),
+        ],
+        "socialClip": {"hook": "How does a drone know what it's looking at?", "coreIdea": "Detection → tracking → segmentation.", "visualSuggestion": "Live boxes over a scene.", "takeaway": "Pixels → decisions.", "hashtags": ["#computerVision", "#AI"]},
+    },
+    "l-rl-intro": {
+        "id": "l-rl-intro", "moduleId": "mod-stack-2", "trackId": "track-stack", "order": 3,
+        "title": "Learning to Act", "summary": "A gentle intro to reinforcement learning for control.", "estMinutes": 5,
+        "blocks": [
+            {"type": "chart", "chartId": "reward-curve"},
+            {"type": "caption", "text": "An RL agent tries, fails, and trains a policy that maximizes reward over time."},
+            {"type": "takeaway", "text": "Reward shapes behavior."},
+        ],
+        "quiz": [
+            _q("In RL, the agent maximizes…", ["Battery life", "Cumulative reward", "Camera resolution", "Wind speed"], 1, "Cumulative discounted reward is the objective."),
+        ],
+        "socialClip": {"hook": "How do drones learn to fly themselves?", "coreIdea": "Reinforcement learning.", "visualSuggestion": "Reward curve rising over episodes.", "takeaway": "Practice. Reward. Repeat.", "hashtags": ["#RL", "#AI"]},
+    },
+
+    # ============================================================
+    # TRACK 7 — SWARMS
+    # ============================================================
+    "l-one-to-many": {
+        "id": "l-one-to-many", "moduleId": "mod-swarms-1", "trackId": "track-swarms", "order": 1,
+        "title": "One to Many", "summary": "Why coordinating two drones is harder than flying one twice.", "estMinutes": 4,
+        "blocks": [
+            {"type": "diagram", "diagramId": "one-to-many"},
+            {"type": "caption", "text": "Independent ≠ coordinated. Coordination needs shared state."},
+            {"type": "takeaway", "text": "Coordination is the hidden tax of multi-agent."},
+        ],
+        "quiz": [
+            _q("Two independent drones avoid each other by…", ["Magic", "Shared world model", "Higher altitude only", "Lower battery"], 1, "Each must know roughly where the others are."),
+        ],
+        "socialClip": {"hook": "Two drones. Twice the problem.", "coreIdea": "Coordination cost.", "visualSuggestion": "Two paths colliding then separating.", "takeaway": "More agents, more questions.", "hashtags": ["#swarm", "#robotics"]},
+    },
+    "l-emergent": {
+        "id": "l-emergent", "moduleId": "mod-swarms-1", "trackId": "track-swarms", "order": 2,
+        "title": "Emergent Behavior", "summary": "Tune three rules. Watch a flock appear.", "estMinutes": 6,
+        "blocks": [
+            {"type": "widget", "widgetId": "swarm-sandbox"},
+            {"type": "caption", "text": "Separation, alignment, cohesion. Local rules. Global pattern."},
+            {"type": "takeaway", "text": "Complex behavior. Trivial rules."},
+        ],
+        "quiz": [
+            _q("Which rule keeps boids from colliding?", ["Cohesion", "Alignment", "Separation", "Gravity"], 2, "Separation pushes apart at close range."),
+            _q("Which rule pulls boids together?", ["Cohesion", "Alignment", "Separation", "Gravity"], 0, "Cohesion biases motion toward the local centroid."),
+        ],
+        "socialClip": {"hook": "3 rules. A flock. No central brain.", "coreIdea": "Emergence.", "visualSuggestion": "Boids in motion.", "takeaway": "Simple rules. Complex life.", "hashtags": ["#emergence", "#swarm"]},
+    },
+    "l-consensus": {
+        "id": "l-consensus", "moduleId": "mod-swarms-2", "trackId": "track-swarms", "order": 1,
+        "title": "Distributed Decisions", "summary": "How a swarm agrees without a leader.", "estMinutes": 5,
+        "blocks": [
+            {"type": "diagram", "diagramId": "consensus"},
+            {"type": "caption", "text": "Each node averages neighbors. Eventually, everyone agrees."},
+            {"type": "takeaway", "text": "Consensus is averaging with patience."},
+        ],
+        "quiz": [
+            _q("Distributed consensus needs…", ["A leader", "Local communication", "GPS", "Manual control"], 1, "Each node exchanges with neighbors only."),
+        ],
+        "socialClip": {"hook": "How do swarms make decisions without a leader?", "coreIdea": "Consensus averaging.", "visualSuggestion": "Node values converging.", "takeaway": "Average. Repeat. Agree.", "hashtags": ["#consensus", "#multiagent"]},
+    },
+    "l-resilience": {
+        "id": "l-resilience", "moduleId": "mod-swarms-2", "trackId": "track-swarms", "order": 2,
+        "title": "Graceful Degradation", "summary": "Swarms don't crash. They thin.", "estMinutes": 4,
+        "blocks": [
+            {"type": "diagram", "diagramId": "resilience"},
+            {"type": "caption", "text": "Lose 30% of agents. Mission still flies — slower, smaller."},
+            {"type": "takeaway", "text": "Resilience = no single drone is critical."},
+        ],
+        "quiz": [
+            _q("A resilient swarm…", ["Stops on first failure", "Adapts to losses", "Needs all members", "Calls home"], 1, "Roles re-allocate dynamically."),
+        ],
+        "socialClip": {"hook": "Knock out half the swarm. It still flies.", "coreIdea": "Graceful degradation.", "visualSuggestion": "Swarm thinning but holding shape.", "takeaway": "No drone is essential.", "hashtags": ["#resilience", "#swarm"]},
+    },
+
+    # ============================================================
+    # TRACK 8 — HUMAN FACTORS
+    # ============================================================
+    "l-sa-levels": {
+        "id": "l-sa-levels", "moduleId": "mod-human-1", "trackId": "track-human", "order": 1,
+        "title": "Situational Awareness", "summary": "Endsley's three levels: perceive, comprehend, project.", "estMinutes": 5,
+        "blocks": [
+            {"type": "diagram", "diagramId": "sa-layers"},
+            {"type": "caption", "text": "See it. Understand it. Predict it."},
+            {"type": "takeaway", "text": "Awareness is not vision. It's prediction."},
+        ],
+        "quiz": [
+            _q("Endsley's highest SA level is…", ["Perception", "Comprehension", "Projection", "Reaction"], 2, "Projection = anticipating future states."),
+        ],
+        "socialClip": {"hook": "Three levels of seeing.", "coreIdea": "Perceive → Comprehend → Project.", "visualSuggestion": "Stacked layers diagram.", "takeaway": "Best operators predict.", "hashtags": ["#SA", "#humanfactors"]},
+    },
+    "l-workload": {
+        "id": "l-workload", "moduleId": "mod-human-1", "trackId": "track-human", "order": 2,
+        "title": "Workload Curve", "summary": "Too little to do is as dangerous as too much.", "estMinutes": 4,
+        "blocks": [
+            {"type": "chart", "chartId": "workload-curve"},
+            {"type": "caption", "text": "Performance peaks at moderate workload. Boredom and overload both kill."},
+            {"type": "takeaway", "text": "Design for the middle of the curve."},
+        ],
+        "quiz": [
+            _q("Vigilance decrement means…", ["You get more alert", "Attention falls off with monotony", "Workload rises", "Battery drains"], 1, "Sustained-attention performance drops over time."),
+        ],
+        "socialClip": {"hook": "Bored pilots crash drones.", "coreIdea": "Workload curve.", "visualSuggestion": "Inverted-U graph.", "takeaway": "Design for the middle.", "hashtags": ["#humanfactors", "#design"]},
+    },
+    "l-gcs-design": {
+        "id": "l-gcs-design", "moduleId": "mod-human-2", "trackId": "track-human", "order": 1,
+        "title": "Ground Station Design", "summary": "Information, not decoration. What a GCS owes its operator.", "estMinutes": 4,
+        "blocks": [
+            {"type": "diagram", "diagramId": "gcs-mock"},
+            {"type": "caption", "text": "Map. Telemetry. Camera. Alarms. The four corners of a good GCS."},
+            {"type": "takeaway", "text": "A great GCS hides what's healthy and shouts what's wrong."},
+        ],
+        "quiz": [
+            _q("A well-designed GCS prioritizes…", ["Beautiful graphics", "Critical alarms", "Many menus", "Loud sounds"], 1, "Information hierarchy beats cosmetics."),
+        ],
+        "socialClip": {"hook": "What's wrong with most drone interfaces?", "coreIdea": "Hide healthy. Shout broken.", "visualSuggestion": "Annotated GCS mock.", "takeaway": "Design for emergencies.", "hashtags": ["#UX", "#GCS"]},
+    },
+    "l-mission-lifecycle": {
+        "id": "l-mission-lifecycle", "moduleId": "mod-human-2", "trackId": "track-human", "order": 2,
+        "title": "Mission Lifecycle", "summary": "Plan, brief, fly, debrief — the rhythm of every operation.", "estMinutes": 4,
+        "blocks": [
+            {"type": "diagram", "diagramId": "mission-timeline"},
+            {"type": "caption", "text": "Most accidents are decided long before takeoff."},
+            {"type": "takeaway", "text": "Missions are paperwork bookended by flight."},
+        ],
+        "quiz": [
+            _q("Which phase reduces future accidents most?", ["Plan", "Brief", "Fly", "Debrief"], 3, "Debrief turns experience into next-time prevention."),
+        ],
+        "socialClip": {"hook": "When does a mission actually start?", "coreIdea": "Plan → Brief → Fly → Debrief.", "visualSuggestion": "Timeline with milestones.", "takeaway": "Flight is the smallest part.", "hashtags": ["#ops", "#missions"]},
+    },
+
+    # ============================================================
+    # TRACK 9 — SAFETY, AIRSPACE & ETHICS
+    # ============================================================
+    "l-airspace": {
+        "id": "l-airspace", "moduleId": "mod-safety-1", "trackId": "track-safety", "order": 1,
+        "title": "Sharing the Sky", "summary": "Why airspace has layers — and why BVLOS is the hard one.", "estMinutes": 5,
+        "blocks": [
+            {"type": "diagram", "diagramId": "airspace-layers"},
+            {"type": "caption", "text": "Higher = busier. Closer to terrain = unmanned."},
+            {"type": "takeaway", "text": "Airspace is geometry plus rules plus trust."},
+        ],
+        "quiz": [
+            _q("'BVLOS' means…", ["Beyond Visual Line of Sight", "Battery Voltage Loss", "Beacon-Visible Local Override", "Boost-Vector Low Speed"], 0, "Operating beyond what the pilot can see directly."),
+        ],
+        "socialClip": {"hook": "Why can't drones fly anywhere?", "coreIdea": "Airspace layers.", "visualSuggestion": "Cake-slice of airspace.", "takeaway": "Sky has zoning.", "hashtags": ["#airspace", "#BVLOS"]},
+    },
+    "l-design-for-failure": {
+        "id": "l-design-for-failure", "moduleId": "mod-safety-1", "trackId": "track-safety", "order": 2,
+        "title": "Designing for Failure", "summary": "Redundancy, geofences, failsafes — assume things break.", "estMinutes": 4,
+        "blocks": [
+            {"type": "diagram", "diagramId": "geofence"},
+            {"type": "caption", "text": "A geofence is a hard 'no' the drone enforces on itself."},
+            {"type": "takeaway", "text": "Designing for failure is how you avoid it."},
+        ],
+        "quiz": [
+            _q("A geofence is…", ["A physical wall", "A virtual boundary enforced by the drone", "A radio jammer", "A camera mode"], 1, "Virtual boundary stored in the autopilot."),
+        ],
+        "socialClip": {"hook": "How do drones know not to cross the fence?", "coreIdea": "Geofencing.", "visualSuggestion": "Boundary line + drone halting.", "takeaway": "Limits live in software.", "hashtags": ["#safety", "#geofence"]},
+    },
+    "l-ethics": {
+        "id": "l-ethics", "moduleId": "mod-safety-2", "trackId": "track-safety", "order": 1,
+        "title": "The Ethics of Autonomy", "summary": "Accountability, meaningful control, dual-use — the unresolved questions.", "estMinutes": 5,
+        "blocks": [
+            {"type": "diagram", "diagramId": "ethics-scales"},
+            {"type": "caption", "text": "More autonomy. More speed. Less time to decide. Where is the human?"},
+            {"type": "takeaway", "text": "Autonomy is a question, not just an engineering target."},
+        ],
+        "quiz": [
+            _q("'Meaningful human control' is concerned with…", ["Battery life", "Whether a human can meaningfully decide", "Drone color", "Camera quality"], 1, "It asks whether the human is genuinely in the loop, not nominally."),
+        ],
+        "socialClip": {"hook": "Who's accountable when an autonomous machine errs?", "coreIdea": "Meaningful human control.", "visualSuggestion": "Scales tipping between human and machine.", "takeaway": "Autonomy is a question.", "hashtags": ["#ethics", "#autonomy"]},
+    },
+
+    # ============================================================
+    # TRACK 10 — REAL-WORLD APPLICATIONS
+    # ============================================================
+    "l-mapping": {
+        "id": "l-mapping", "moduleId": "mod-apps-1", "trackId": "track-apps", "order": 1,
+        "title": "Mapping & Survey", "summary": "Photogrammetry turns photos into 3D worlds.", "estMinutes": 4,
+        "blocks": [
+            {"type": "diagram", "diagramId": "photogrammetry"},
+            {"type": "caption", "text": "Hundreds of overlapping photos. One point cloud."},
+            {"type": "takeaway", "text": "Coverage > resolution."},
+        ],
+        "quiz": [
+            _q("Photogrammetry needs…", ["A single photo", "Many overlapping photos", "Only LiDAR", "GPS only"], 1, "Overlap creates the parallax needed for 3D reconstruction."),
+        ],
+        "socialClip": {"hook": "How does a drone make a 3D model?", "coreIdea": "Photogrammetry.", "visualSuggestion": "Point cloud assembling.", "takeaway": "Many photos = one world.", "hashtags": ["#mapping", "#photogrammetry"]},
+    },
+    "l-agriculture": {
+        "id": "l-agriculture", "moduleId": "mod-apps-1", "trackId": "track-apps", "order": 2,
+        "title": "Drones in Agriculture", "summary": "NDVI: seeing what crops feel.", "estMinutes": 4,
+        "blocks": [
+            {"type": "diagram", "diagramId": "ndvi"},
+            {"type": "caption", "text": "Plants reflect more infrared when healthy. NDVI quantifies it."},
+            {"type": "takeaway", "text": "Drones see what eyes can't — chlorophyll stress."},
+        ],
+        "quiz": [
+            _q("NDVI exploits…", ["Heat", "Sound", "Near-infrared reflectance", "Wind"], 2, "Healthy chlorophyll strongly reflects NIR."),
+        ],
+        "socialClip": {"hook": "How does a drone see if your crop is sick?", "coreIdea": "NDVI multispectral.", "visualSuggestion": "Field tinted by NDVI.", "takeaway": "Invisible health, made visible.", "hashtags": ["#agtech", "#NDVI"]},
+    },
+    "l-inspection": {
+        "id": "l-inspection", "moduleId": "mod-apps-1", "trackId": "track-apps", "order": 3,
+        "title": "Asset Inspection", "summary": "Powerlines, turbines, pipelines — eyes that don't get tired.", "estMinutes": 4,
+        "blocks": [
+            {"type": "diagram", "diagramId": "inspection-path"},
+            {"type": "caption", "text": "Programmed paths. Repeatable angles. Comparable images over time."},
+            {"type": "takeaway", "text": "Drones turn inspection into a dataset."},
+        ],
+        "quiz": [
+            _q("The big win in repeatable drone inspection is…", ["Cheaper drones", "Comparable images over time", "Better wind", "Faster batteries"], 1, "Trend analysis matters more than any single photo."),
+        ],
+        "socialClip": {"hook": "How drones cut inspection costs by 80%.", "coreIdea": "Repeatable paths.", "visualSuggestion": "Drone tracing a tower.", "takeaway": "Routine, not heroic.", "hashtags": ["#inspection", "#drones"]},
+    },
+    "l-delivery": {
+        "id": "l-delivery", "moduleId": "mod-apps-2", "trackId": "track-apps", "order": 1,
+        "title": "Logistics & Delivery", "summary": "Payload, range, energy. The endurance equation.", "estMinutes": 5,
+        "blocks": [
+            {"type": "chart", "chartId": "payload-range"},
+            {"type": "caption", "text": "Carry more = fly less. Always."},
+            {"type": "takeaway", "text": "Endurance is the limit, not autonomy."},
+        ],
+        "quiz": [
+            _q("Doubling payload roughly…", ["Doubles range", "Halves range", "No effect", "Quadruples range"], 1, "Energy is finite; more weight = more current."),
+        ],
+        "socialClip": {"hook": "Why are delivery drones still rare?", "coreIdea": "Payload kills range.", "visualSuggestion": "Curve falling as payload rises.", "takeaway": "Energy is destiny.", "hashtags": ["#delivery", "#logistics"]},
+    },
+    "l-public-safety": {
+        "id": "l-public-safety", "moduleId": "mod-apps-2", "trackId": "track-apps", "order": 2,
+        "title": "Public Safety", "summary": "Search-and-rescue, disaster mapping, firefighting support.", "estMinutes": 4,
+        "blocks": [
+            {"type": "diagram", "diagramId": "search-pattern"},
+            {"type": "caption", "text": "Lawnmower, expanding-square, sector — patterns matter."},
+            {"type": "takeaway", "text": "In a crisis, drones buy time."},
+        ],
+        "quiz": [
+            _q("Which is a common search pattern?", ["Spiral", "Expanding square", "Bouncing", "Free flight"], 1, "Expanding-square is standard SAR."),
+        ],
+        "socialClip": {"hook": "How drones find missing people faster.", "coreIdea": "Systematic search patterns.", "visualSuggestion": "Lawnmower transect over terrain.", "takeaway": "Pattern + payload = lives.", "hashtags": ["#SAR", "#publicSafety"]},
+    },
+    "l-frontiers": {
+        "id": "l-frontiers", "moduleId": "mod-apps-2", "trackId": "track-apps", "order": 3,
+        "title": "Frontiers", "summary": "Urban air mobility, counter-drone, bio-inspired flight.", "estMinutes": 4,
+        "blocks": [
+            {"type": "diagram", "diagramId": "frontiers"},
+            {"type": "caption", "text": "The next decade: passengers, swarms, and wings that flap."},
+            {"type": "takeaway", "text": "Autonomy is just getting started."},
+        ],
+        "quiz": [
+            _q("'UAM' usually refers to…", ["Underwater Acoustic Monitoring", "Urban Air Mobility", "Universal Access Module", "Unidirectional Auto-Mapping"], 1, "Passenger or cargo aircraft in city airspace."),
+        ],
+        "socialClip": {"hook": "What's next for autonomous flight?", "coreIdea": "Frontiers: UAM, counter-drone, bio-inspired.", "visualSuggestion": "Montage of futures.", "takeaway": "Autonomy is starting.", "hashtags": ["#future", "#aviation"]},
     },
 }
 

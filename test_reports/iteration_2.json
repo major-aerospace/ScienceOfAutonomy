@@ -1,0 +1,40 @@
+{
+  "summary": "Phase 2 end-to-end testing PASSED. Backend: 27/27 pytest tests green (16 regression + 11 new Phase 2). Frontend: all Phase 2 UI flows render correctly — 10 LIVE track cards on /tracks, landing hero shows '10 TRACKS 37 LESSONS LIVE', new lessons l-rl-intro/l-airspace/l-emergent render (SVG diagrams + reward-curve chart + SwarmSandbox canvas with boids), Dashboard shows 'ADAPTIVE · NEXT FOR YOU' card (recommending The Autonomy Ladder) AND 'SPACED REPETITION' card with review count, /review protected page renders with 'Nothing to review' empty state, nav shows REVIEW link when signed in. Service worker is served at /service-worker.js (200, Content-Type: application/javascript; charset=UTF-8). Recommend API: guest -> l-autonomy-ladder; after completing l-autonomy-ladder -> l-ooda-loop. Review queue contract: POST /progress/complete with score<1.0 inserts row with next_review_at=now+1d, GET /review/queue correctly returns count=0 (due-only filter works); POST /review/answer with unknown id 404s.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Lesson page (charts)", "issues": ["Recharts width(-1)/height(-1) warning still fires on first mount of reward-curve / payload-range / workload-curve / edge-ai charts — same benign issue noted in iteration_1, parent container needs explicit min-height to silence."]},
+      {"screen": "Landing", "issues": ["THREE.Clock deprecation warning from r3f — pre-existing, non-blocking."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_backend_api.py",
+    "/app/backend/tests/test_phase2_api.py",
+    "/app/test_reports/pytest/pytest_iter2.xml"
+  ],
+  "action_items": [
+    "Optional: add minHeight to Recharts ResponsiveContainer parents to silence width=-1/height=-1 warnings on first mount.",
+    "Optional: in get_current_user (backend/auth.py:42) the cookie 'access_token' is preferred over the 'Authorization: Bearer' header. This caused a session-cookie collision in the regression test where a later admin login overwrote the cookie used by an earlier-authenticated test. Not a production bug, but worth noting that mixing cookie + Bearer auth on the same client (e.g. a shared requests.Session, or a browser tab where a user logs in then logs in as someone else) will silently prefer the cookie. Consider preferring Bearer when explicitly provided, or clearing the cookie on every login response from the previous user."
+  ],
+  "critical_code_review_comments": [
+    "Spaced-repetition: review row's next_review_at is hardcoded to now+1day on creation (server.py:291). That makes the /review/queue endpoint untestable end-to-end on the same day a review is created — the only way to see items in the queue right now is to backdate the row. Consider seeding the first review at now (or now - 1min) so users see immediate feedback on the dashboard SPACED REPETITION card. Right now a fresh user who misses a question sees the card permanently say '0 NOTHING DUE' until the next calendar day.",
+    "/api/recommend/next uses a flat order across all 10 tracks, so users only ever see foundations until they finish every Track-1 lesson. This is fine for MVP but means the 'adaptive' card never recommends across tracks unless the user is far along; consider weighting by Dronability profile.",
+    "/api/review/queue does not bound to user-completed lessons — if a lesson is removed from seed_data, orphan review rows are silently dropped (server.py:354-356). OK now, just worth knowing for content migration.",
+    "review_answer 'graduate' path (ease >= 5) returns {ok, graduated:True} but UI client must handle this distinct shape from the non-graduated path — make sure /review page handles both.",
+    "Cookie + Bearer dual-auth in auth.py:42 prefers cookie. Document this contract or invert the priority."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase2_api.py (new — 11 Phase 2 tests)",
+    "/app/backend/tests/test_backend_api.py (updated test_tracks_returns_three to accept >=3, test_social_clips_one_per_lesson to count all tracks, and clear cookies in test_complete_lesson_awards_xp to avoid cookie-vs-Bearer collision)",
+    "/app/test_reports/pytest/pytest_iter2.xml (generated)"
+  ],
+  "success_rate": {"backend": "100% (27/27)", "frontend": "100% of requested Phase 2 flows"},
+  "test_credentials": "Admin: admin@scienceofautonomy.app / autonomy2026. Ad-hoc test users TEST_p2_*/TEST_ui_* registered with password TestPass123!.",
+  "seed_data_creation": "No new seed data. Tests register TEST_-prefixed users on demand; not cleaned up.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression suite is now 27 tests across /app/backend/tests/test_backend_api.py + test_phase2_api.py. Phase 2 verified: 10 tracks, 46 lessons, /api/recommend/next, /api/review/queue, /api/review/answer, /api/studio/social-clips returns 46 items (key is 'items', not 'clips'). Frontend: lesson IDs to spot-check are listed in the request; all 4 new charts (reward-curve, edge-ai, payload-range, workload-curve) and 23 new diagrams render. Service worker only registers in production builds but the file is served at /service-worker.js as application/javascript. To test review queue with items present, backdate next_review_at directly in mongo (db.reviews.update_one({user_id:..}, {$set:{next_review_at: '<past iso>'}})).",
+  "rca of the issue": "Pre-existing regression test test_complete_lesson_awards_xp failed in iter2 because a later admin login overwrote the requests.Session cookie used implicitly by get_current_user (which prefers cookie over Bearer). Fixed by clearing cookies in the test. Not a Phase 2 regression."
+}
