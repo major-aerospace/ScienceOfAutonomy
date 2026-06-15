@@ -643,7 +643,7 @@ async def certificate(track_id: str, request: Request):
 # --------------------------------------------------------------------------------------
 @api.get("/glossary")
 async def glossary(q: str = ""):
-    return {"terms": search_glossary(q)}
+    return {"terms": search_glossary(q, limit=len(GLOSSARY))}
 
 
 @api.get("/search")

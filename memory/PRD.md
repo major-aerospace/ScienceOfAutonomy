@@ -26,21 +26,22 @@ Build a vendor-neutral, visual-first, PWA-ready interactive learning platform fo
 - Content Studio: per-lesson socialClips + 4-week CSV calendar.
 - PWA manifest + responsive design.
 
-### Phase 2 (Feb 2026 update)
-- **All 10 tracks live · 46 lessons total**: added Sensing & Perception, Communications, Autonomy Stack & AI, Multi-Agent & Swarms, Human Factors, Safety & Ethics, and Real-World Applications.
-- **23 new diagram components** + 4 new chart types (edge-ai, reward-curve, payload-range, workload-curve).
-- **Adaptive next-lesson recommendation** (`/api/recommend/next`) — picks up where the user left off and re-routes to review when last quiz was rough.
-- **Spaced-repetition review queue** (`/api/review/*`) — missed-quiz lessons are scheduled at 1/3/7/14/30-day intervals and graduate out after 5 cycles. Visible in nav (`/review`) and on Dashboard.
-- **Service-worker PWA offline cache** (`/public/service-worker.js`) — cache-first static assets, network-first API for `/tracks`, `/lessons`, `/studio/social-clips`. Visited lessons survive offline.
-- **Capacitor Android wrapper config** (`/capacitor.config.js`) + **daily streak push notifications** via `@capacitor/local-notifications` (`src/lib/notifications.js`). Build instructions in `/app/frontend/ANDROID.md`.
+### Phase 3 (Feb 2026 update)
+- **Difficulty tiers** per lesson — ELI12 / Standard / Deep dive selector inline on every lesson; ELI12 hides deepdive blocks + shows a yellow "Explained simply" banner; Deep dive auto-expands the math expander. Persisted to user profile (`PATCH /api/auth/tier`) and locally for guests.
+- **Badges + Leaderboard + Certificates**:
+  - 20-badge catalog auto-evaluated on lesson completion + assessment (`/api/badges/me`, `/api/badges/catalog`). Visible on Dashboard as a 5-column grid with earned/locked states.
+  - `/api/leaderboard?metric=xp|streak` powers the public `/leaderboard` page with two tabs.
+  - Track-completion certificates at `/certificates/:trackId` — printable / save-as-PDF, unique cert IDs, hidden chrome via print stylesheet. TrackDetail surfaces a "View certificate" CTA on 100% completion.
+- **Glossary + Global Search**:
+  - 68-term vendor-neutral glossary at `/glossary` with live filter.
+  - **⌘K / Ctrl-K command palette** in the nav — searches lessons, tracks, and glossary in one box via `/api/search`.
+- **CMS + Discussions**:
+  - Admin-only `/admin` console: stats tiles (users, completions, assessments, custom lessons, comments), top-10 lessons, full "Create lesson" form with track/module dropdowns + simple caption/takeaway/MCQ blocks. Custom lessons are persisted in `db.custom_lessons` and merged into `/api/tracks/:id` + `/api/lessons/:id`.
+  - Per-lesson **Discussion** section beneath every lesson (`/api/lessons/:id/comments` GET/POST), admin moderation via `/api/admin/comments/:id` DELETE.
+- **Production polish**: stripped MVP/v1.0/LIVE labels from UI. Header now reads VENDOR-NEUTRAL · VISUAL-FIRST · PRESENT-DAY.
 
-## Backlog / Next
-- P1: Service-worker push notifications for web (web-push subscription + backend trigger).
-- P2: Difficulty tiers (ELI12 / Standard / Deep dive).
-- P2: Badges, leaderboards, certificates.
-- P2: Glossary + global search.
-- P3: CMS admin for content authoring.
-- P3: Community / per-lesson discussion threads.
+### Testing
+- 47/47 backend pytest pass after the Phase 3 glossary fix. All requested Phase 3 frontend flows verified.
 
 ## Credentials
 See `/app/memory/test_credentials.md`.

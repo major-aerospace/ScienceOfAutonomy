@@ -2,6 +2,7 @@ import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { Baby, BookOpen, GraduationCap } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const TIERS = [
   { id: "eli12", title: "ELI12", icon: Baby, sub: "Friendlier" },
@@ -58,7 +59,14 @@ export default function TierSelector({ inline = false }) {
 
 export function useTier() {
   const { user } = useAuth();
+  const [guestTier, setGuestTier] = useState(
+    () => (typeof window !== "undefined" ? localStorage.getItem("soa_tier_guest") || "standard" : "standard")
+  );
+  useEffect(() => {
+    const onChange = (e) => setGuestTier(e.detail || "standard");
+    window.addEventListener("soa-tier", onChange);
+    return () => window.removeEventListener("soa-tier", onChange);
+  }, []);
   if (user && user !== false) return user.tier || "standard";
-  if (typeof window !== "undefined") return localStorage.getItem("soa_tier_guest") || "standard";
-  return "standard";
+  return guestTier;
 }

@@ -15,6 +15,7 @@ export default function Lesson() {
   const { user, refresh } = useAuth();
   const nav = useNavigate();
   const [lesson, setLesson] = useState(null);
+  const tier = useTier();
 
   useEffect(() => {
     setLesson(null);
@@ -43,8 +44,8 @@ export default function Lesson() {
 
   if (!lesson) return <div className="p-12 soa-mono text-sm">LOADING LESSON…</div>;
 
-  // Filter blocks based on tier preference: hide "deepdive" for ELI12 readers.
-  const tier = (user && user !== false ? user.tier : null) || (typeof window !== "undefined" ? localStorage.getItem("soa_tier_guest") : null) || "standard";
+  // Use the reactive tier hook so the page updates immediately when the selector changes
+  // (including for guests, where the change is stored in localStorage + emitted as an event).
   const blocks = (lesson.blocks || []).filter((b) => !(tier === "eli12" && b.type === "deepdive"));
 
   return (
@@ -63,7 +64,7 @@ export default function Lesson() {
       <p className="text-[rgb(var(--soa-ink-2))] mt-2 max-w-2xl">{lesson.summary}</p>
 
       {tier === "eli12" && (
-        <div className="mt-5 border-l-[3px] border-[#FFCC00] bg-[#FFCC00]/10 p-4 rounded-sm flex items-start gap-3" data-testid="eli12-intro">
+        <div className="mt-5 border-l-[3px] border-[#FFCC00] bg-[#FFCC00]/10 p-4 rounded-sm flex items-start gap-3" data-testid="eli12-banner">
           <Baby className="w-5 h-5 mt-0.5 text-[rgb(var(--soa-ink))]" strokeWidth={1.6} />
           <div>
             <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-2))]">EXPLAIN LIKE I'M 12</div>
