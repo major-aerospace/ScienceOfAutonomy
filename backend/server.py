@@ -282,13 +282,15 @@ async def complete_lesson(body: CompleteLessonBody, request: Request):
             {"$set": {"xp": new_xp, "level": new_level, "streak": streak, "last_active_day": today}},
         )
         # Spaced-repetition: if user missed any question, schedule a review.
+        # We schedule the FIRST review slightly in the past so users see immediate
+        # feedback on the dashboard "Spaced Repetition" card right after the lesson.
         if body.score < 1.0:
             await db.reviews.insert_one({
                 "id": str(uuid.uuid4()),
                 "user_id": user["id"],
                 "lesson_id": body.lesson_id,
                 "ease": 1,  # interval index
-                "next_review_at": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
+                "next_review_at": (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat(),
                 "created_at": datetime.now(timezone.utc).isoformat(),
             })
     return {"ok": True, "xpAwarded": awarded}
