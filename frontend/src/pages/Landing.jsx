@@ -25,9 +25,9 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6 pt-16 pb-12 md:pt-24 md:pb-20 grid lg:grid-cols-[1.05fr,1fr] gap-10 items-center">
           <div>
             <div className="flex items-center gap-3">
-              <span className="soa-chip soa-chip-primary">v1.0 · MVP</span>
-              <span className="soa-chip">VENDOR-NEUTRAL</span>
+              <span className="soa-chip soa-chip-primary">VENDOR-NEUTRAL</span>
               <span className="soa-chip">VISUAL-FIRST</span>
+              <span className="soa-chip">PRESENT-DAY</span>
             </div>
             <h1 className="soa-display text-5xl md:text-7xl font-black tracking-tighter leading-[0.95] mt-6">
               The science<br />
@@ -46,7 +46,7 @@ export default function Landing() {
               </Link>
             </div>
             <div className="mt-6 flex items-center gap-6 soa-mono text-[11px] tracking-widest text-[rgb(var(--soa-ink-3))]">
-              <span>10 TRACKS · 37 LESSONS · LIVE</span>
+              <span>10 TRACKS · 46 LESSONS</span>
               <span>11 INTERACTIVE WIDGETS</span>
             </div>
           </div>
@@ -92,7 +92,7 @@ export default function Landing() {
       <section className="max-w-7xl mx-auto px-6 py-16 md:py-24">
         <div className="grid md:grid-cols-[1fr,auto] gap-4 items-end">
           <div>
-            <div className="soa-mono text-[11px] tracking-widest text-[#0047FF]">CURRICULUM · 03 LIVE</div>
+            <div className="soa-mono text-[11px] tracking-widest text-[#0047FF]">CURRICULUM</div>
             <h2 className="soa-display text-3xl md:text-5xl font-extrabold tracking-tight mt-2">
               Climb from rotor to swarm.
             </h2>
@@ -127,7 +127,7 @@ export default function Landing() {
 
         {/* Full curriculum strip */}
         <div className="mt-10 border-t border-[rgb(var(--soa-line))] pt-6">
-          <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">FULL CURRICULUM · 10 TRACKS · ALL LIVE</div>
+          <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">FULL CURRICULUM</div>
           <div className="flex flex-wrap gap-2 mt-2">
             {["Sensing & Perception", "Comms & Connectivity", "Autonomy Stack & AI", "Multi-Agent & Swarms", "Human Factors", "Safety & Ethics", "Real-World Applications"].map((n) => (
               <span key={n} className="soa-chip">{n}</span>

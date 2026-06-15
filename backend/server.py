@@ -27,6 +27,8 @@ from auth import (
     get_optional_user,
 )
 from seed_data import TRACKS, LESSONS, all_lessons_list
+from glossary import GLOSSARY, search_glossary
+from badges import BADGES, BADGE_MAP, evaluate_badges
 
 # --------------------------------------------------------------------------------------
 # DB
@@ -75,6 +77,26 @@ class ReviewAnswerBody(BaseModel):
     correct: bool
 
 
+class TierUpdate(BaseModel):
+    tier: Literal["eli12", "standard", "deep"]
+
+
+class CommentCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=2000)
+
+
+class AdminLessonCreate(BaseModel):
+    id: str = Field(min_length=3, max_length=80)
+    title: str = Field(min_length=2, max_length=120)
+    summary: str = Field(min_length=2, max_length=300)
+    trackId: str
+    moduleId: str
+    estMinutes: int = 5
+    blocks: List[dict]
+    quiz: List[dict] = []
+    socialClip: Optional[dict] = None
+
+
 # --------------------------------------------------------------------------------------
 # Helpers
 # --------------------------------------------------------------------------------------
@@ -100,6 +122,7 @@ def public_user(u: dict) -> dict:
         "level": u.get("level", 1),
         "streak": u.get("streak", 0),
         "badges": u.get("badges", []),
+        "tier": u.get("tier", "standard"),
         "role": u.get("role", "user"),
     }
 
@@ -107,6 +130,36 @@ def public_user(u: dict) -> dict:
 def xp_to_level(xp: int) -> int:
     # simple curve: 100 XP per level, grows slowly
     return 1 + int(xp ** 0.5 / 5)
+
+
+async def _custom_lessons_map():
+    rows = await db.custom_lessons.find({}, {"_id": 0}).to_list(2000)
+    return {r["id"]: r for r in rows}
+
+
+async def _resolve_lesson(lesson_id: str):
+    if lesson_id in LESSONS:
+        return LESSONS[lesson_id]
+    custom = await db.custom_lessons.find_one({"id": lesson_id}, {"_id": 0})
+    return custom
+
+
+async def _grant_badges(user_id: str):
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        return []
+    rows = await db.progress.find({"user_id": user_id, "completed": True}).to_list(2000)
+    completed = {r["lesson_id"] for r in rows}
+    has_assess = await db.assessments.count_documents({"user_id": user_id}) > 0
+    earned = evaluate_badges(user, completed, TRACKS, has_assess)
+    current = set(user.get("badges", []))
+    new_badges = list(earned - current)
+    if new_badges:
+        await db.users.update_one(
+            {"id": user_id},
+            {"$set": {"badges": list(earned)}},
+        )
+    return new_badges
 
 
 # --------------------------------------------------------------------------------------
@@ -208,21 +261,30 @@ async def get_track(track_id: str, request: Request):
     if user:
         rows = await db.progress.find({"user_id": user["id"]}).to_list(2000)
         completed = {r["lesson_id"] for r in rows if r.get("completed")}
+    custom_map = await _custom_lessons_map()
     modules = []
     for m in track["modules"]:
+        # Seed lessons in the module
+        lesson_ids = list(m["lessons"])
+        # Plus any admin-added custom lessons attached to this module
+        for cid, cl in custom_map.items():
+            if cl.get("moduleId") == m["id"] and cid not in lesson_ids:
+                lesson_ids.append(cid)
         ls = []
-        for lid in m["lessons"]:
-            l = LESSONS.get(lid)
+        for lid in lesson_ids:
+            l = LESSONS.get(lid) or custom_map.get(lid)
             if not l:
                 continue
             ls.append({
                 "id": l["id"],
                 "title": l["title"],
                 "summary": l["summary"],
-                "estMinutes": l["estMinutes"],
-                "order": l["order"],
+                "estMinutes": l.get("estMinutes", 5),
+                "order": l.get("order", 99),
                 "completed": lid in completed,
+                "custom": lid in custom_map,
             })
+        ls.sort(key=lambda x: x.get("order", 99))
         modules.append({"id": m["id"], "order": m["order"], "title": m["title"], "lessons": ls})
     return {
         "id": track["id"],
@@ -235,16 +297,23 @@ async def get_track(track_id: str, request: Request):
 
 @api.get("/lessons/{lesson_id}")
 async def get_lesson(lesson_id: str):
-    l = LESSONS.get(lesson_id)
+    l = await _resolve_lesson(lesson_id)
     if not l:
         raise HTTPException(404, "Lesson not found")
-    # next + prev within the track
-    track = next((t for t in TRACKS if t["id"] == l["trackId"]), None)
+    # next + prev within the track (seed + custom)
+    track_id = l["trackId"]
+    track = next((t for t in TRACKS if t["id"] == track_id), None)
     seq = []
     if track:
+        custom_map = await _custom_lessons_map()
         for m in track["modules"]:
-            for lid in m["lessons"]:
-                seq.append(lid)
+            mod_ids = list(m["lessons"])
+            for cid, cl in custom_map.items():
+                if cl.get("moduleId") == m["id"] and cid not in mod_ids:
+                    mod_ids.append(cid)
+            # Sort by order
+            mod_ids.sort(key=lambda lid: (LESSONS.get(lid) or custom_map.get(lid, {})).get("order", 99))
+            seq.extend(mod_ids)
     idx = seq.index(lesson_id) if lesson_id in seq else -1
     prev_id = seq[idx - 1] if idx > 0 else None
     next_id = seq[idx + 1] if 0 <= idx < len(seq) - 1 else None
@@ -255,11 +324,13 @@ async def get_lesson(lesson_id: str):
 @api.post("/progress/complete")
 async def complete_lesson(body: CompleteLessonBody, request: Request):
     user = await get_current_user(request, db)
-    if body.lesson_id not in LESSONS:
+    l = await _resolve_lesson(body.lesson_id)
+    if not l:
         raise HTTPException(404, "Lesson not found")
 
     existing = await db.progress.find_one({"user_id": user["id"], "lesson_id": body.lesson_id})
     awarded = 0
+    new_badges: list = []
     if not existing:
         awarded = 25 + int(body.score * 15)  # base + quiz bonus
         await db.progress.insert_one({
@@ -293,7 +364,8 @@ async def complete_lesson(body: CompleteLessonBody, request: Request):
                 "next_review_at": (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat(),
                 "created_at": datetime.now(timezone.utc).isoformat(),
             })
-    return {"ok": True, "xpAwarded": awarded}
+        new_badges = await _grant_badges(user["id"])
+    return {"ok": True, "xpAwarded": awarded, "newBadges": new_badges}
 
 
 @api.get("/progress")
@@ -411,6 +483,7 @@ async def submit_assessment(body: AssessmentSubmit, request: Request):
     }
     await db.assessments.insert_one(doc)
     rec = _recommend_track(body)
+    await _grant_badges(user["id"])
     return {"result": {k: v for k, v in doc.items() if k != "_id"}, "recommendedTrack": rec}
 
 
@@ -484,6 +557,247 @@ async def calendar_csv():
 
 
 # --------------------------------------------------------------------------------------
+# User tier preference
+# --------------------------------------------------------------------------------------
+@api.patch("/auth/tier")
+async def set_tier(body: TierUpdate, request: Request):
+    user = await get_current_user(request, db)
+    await db.users.update_one({"id": user["id"]}, {"$set": {"tier": body.tier}})
+    user["tier"] = body.tier
+    return {"user": public_user(user)}
+
+
+# --------------------------------------------------------------------------------------
+# Badges
+# --------------------------------------------------------------------------------------
+@api.get("/badges/catalog")
+async def badges_catalog():
+    return {"badges": BADGES}
+
+
+@api.get("/badges/me")
+async def my_badges(request: Request):
+    user = await get_current_user(request, db)
+    earned = set(user.get("badges", []))
+    enriched = [{**b, "earned": b["id"] in earned} for b in BADGES]
+    return {"badges": enriched, "earnedCount": len(earned), "totalCount": len(BADGES)}
+
+
+# --------------------------------------------------------------------------------------
+# Leaderboard
+# --------------------------------------------------------------------------------------
+@api.get("/leaderboard")
+async def leaderboard(metric: str = "xp", limit: int = 20):
+    if metric not in ("xp", "streak"):
+        raise HTTPException(400, "metric must be xp or streak")
+    rows = await db.users.find(
+        {metric: {"$gt": 0}},
+        {"_id": 0, "name": 1, "xp": 1, "level": 1, "streak": 1, "badges": 1},
+    ).sort(metric, -1).limit(limit).to_list(limit)
+    return {
+        "metric": metric,
+        "entries": [
+            {"rank": i + 1, "name": r.get("name", "Anonymous"),
+             "xp": r.get("xp", 0), "level": r.get("level", 1),
+             "streak": r.get("streak", 0), "badges": len(r.get("badges", []))}
+            for i, r in enumerate(rows)
+        ],
+    }
+
+
+# --------------------------------------------------------------------------------------
+# Certificates
+# --------------------------------------------------------------------------------------
+@api.get("/certificates/{track_id}")
+async def certificate(track_id: str, request: Request):
+    user = await get_current_user(request, db)
+    track = next((t for t in TRACKS if t["id"] == track_id), None)
+    if not track:
+        raise HTTPException(404, "Track not found")
+    track_lessons = {lid for m in track["modules"] for lid in m["lessons"]}
+    rows = await db.progress.find({"user_id": user["id"]}).to_list(2000)
+    completed = {r["lesson_id"] for r in rows if r.get("completed")}
+    eligible = track_lessons.issubset(completed)
+    if not eligible:
+        return {
+            "eligible": False,
+            "completedCount": len(track_lessons & completed),
+            "totalCount": len(track_lessons),
+            "track": {"id": track["id"], "title": track["title"]},
+        }
+    # Award date = max completed_at across track lessons
+    track_rows = [r for r in rows if r["lesson_id"] in track_lessons]
+    award_date = max(r.get("completed_at", "") for r in track_rows) if track_rows else datetime.now(timezone.utc).isoformat()
+    cert_id = f"SOA-{track['id'].split('-')[-1].upper()}-{user['id'][:8].upper()}"
+    return {
+        "eligible": True,
+        "cert_id": cert_id,
+        "user_name": user["name"],
+        "track": {"id": track["id"], "title": track["title"], "summary": track["summary"]},
+        "awarded_at": award_date,
+    }
+
+
+# --------------------------------------------------------------------------------------
+# Glossary + Search
+# --------------------------------------------------------------------------------------
+@api.get("/glossary")
+async def glossary(q: str = ""):
+    return {"terms": search_glossary(q)}
+
+
+@api.get("/search")
+async def search(q: str = "", limit: int = 12):
+    """Global search across lessons, tracks and glossary."""
+    if not q or len(q.strip()) < 2:
+        return {"lessons": [], "tracks": [], "glossary": []}
+    q_low = q.lower().strip()
+    lessons = []
+    for lid, l in LESSONS.items():
+        if q_low in l["title"].lower() or q_low in l["summary"].lower():
+            lessons.append({"id": l["id"], "title": l["title"], "trackId": l["trackId"], "summary": l["summary"]})
+    # Custom lessons
+    for cl in (await db.custom_lessons.find({}, {"_id": 0}).to_list(2000)):
+        if q_low in cl.get("title", "").lower() or q_low in cl.get("summary", "").lower():
+            lessons.append({"id": cl["id"], "title": cl["title"], "trackId": cl["trackId"], "summary": cl["summary"], "custom": True})
+    tracks = [
+        {"id": t["id"], "title": t["title"], "summary": t["summary"]}
+        for t in TRACKS
+        if q_low in t["title"].lower() or q_low in t["summary"].lower()
+    ]
+    glossary_hits = search_glossary(q_low, limit=10)
+    return {"lessons": lessons[:limit], "tracks": tracks[:limit], "glossary": glossary_hits}
+
+
+# --------------------------------------------------------------------------------------
+# Comments / Discussion
+# --------------------------------------------------------------------------------------
+@api.get("/lessons/{lesson_id}/comments")
+async def get_comments(lesson_id: str):
+    rows = await db.comments.find(
+        {"lesson_id": lesson_id},
+        {"_id": 0},
+    ).sort("created_at", -1).limit(100).to_list(100)
+    return {"comments": rows, "count": len(rows)}
+
+
+@api.post("/lessons/{lesson_id}/comments")
+async def post_comment(lesson_id: str, body: CommentCreate, request: Request):
+    user = await get_current_user(request, db)
+    l = await _resolve_lesson(lesson_id)
+    if not l:
+        raise HTTPException(404, "Lesson not found")
+    doc = {
+        "id": str(uuid.uuid4()),
+        "lesson_id": lesson_id,
+        "user_id": user["id"],
+        "user_name": user["name"],
+        "body": body.body.strip(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.comments.insert_one(doc)
+    return {"comment": {k: v for k, v in doc.items() if k != "_id"}}
+
+
+@api.delete("/admin/comments/{comment_id}")
+async def delete_comment(comment_id: str, request: Request):
+    user = await get_current_user(request, db)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Admin only")
+    await db.comments.delete_one({"id": comment_id})
+    return {"ok": True}
+
+
+# --------------------------------------------------------------------------------------
+# Admin CMS — custom lessons
+# --------------------------------------------------------------------------------------
+@api.get("/admin/stats")
+async def admin_stats(request: Request):
+    user = await get_current_user(request, db)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Admin only")
+    user_count = await db.users.count_documents({})
+    progress_count = await db.progress.count_documents({})
+    assessments = await db.assessments.count_documents({})
+    custom_lessons = await db.custom_lessons.count_documents({})
+    comments = await db.comments.count_documents({})
+    # Lesson completion tally
+    pipeline = [
+        {"$group": {"_id": "$lesson_id", "n": {"$sum": 1}}},
+        {"$sort": {"n": -1}},
+        {"$limit": 10},
+    ]
+    top = await db.progress.aggregate(pipeline).to_list(10)
+    return {
+        "users": user_count,
+        "lessonsCompleted": progress_count,
+        "assessments": assessments,
+        "customLessons": custom_lessons,
+        "comments": comments,
+        "topLessons": [{"lessonId": r["_id"], "completions": r["n"]} for r in top],
+    }
+
+
+@api.get("/admin/lessons")
+async def list_custom_lessons(request: Request):
+    user = await get_current_user(request, db)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Admin only")
+    rows = await db.custom_lessons.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return {"lessons": rows}
+
+
+@api.post("/admin/lessons")
+async def create_custom_lesson(body: AdminLessonCreate, request: Request):
+    user = await get_current_user(request, db)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Admin only")
+    if body.id in LESSONS:
+        raise HTTPException(400, "Lesson ID collides with seed content")
+    track = next((t for t in TRACKS if t["id"] == body.trackId), None)
+    if not track:
+        raise HTTPException(400, "Unknown trackId")
+    if not any(m["id"] == body.moduleId for m in track["modules"]):
+        raise HTTPException(400, "Unknown moduleId for this track")
+    existing = await db.custom_lessons.find_one({"id": body.id})
+    if existing:
+        raise HTTPException(400, "Lesson with this ID already exists")
+    doc = {
+        "id": body.id,
+        "title": body.title,
+        "summary": body.summary,
+        "trackId": body.trackId,
+        "moduleId": body.moduleId,
+        "estMinutes": body.estMinutes,
+        "order": 100,
+        "blocks": body.blocks,
+        "quiz": body.quiz,
+        "socialClip": body.socialClip or {
+            "hook": body.title,
+            "coreIdea": body.summary,
+            "visualSuggestion": "",
+            "takeaway": "",
+            "hashtags": [],
+        },
+        "created_by": user["id"],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.custom_lessons.insert_one(doc)
+    return {"lesson": {k: v for k, v in doc.items() if k != "_id"}}
+
+
+@api.delete("/admin/lessons/{lesson_id}")
+async def delete_custom_lesson(lesson_id: str, request: Request):
+    user = await get_current_user(request, db)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Admin only")
+    if lesson_id in LESSONS:
+        raise HTTPException(400, "Cannot delete a seed lesson")
+    await db.custom_lessons.delete_one({"id": lesson_id})
+    return {"ok": True}
+
+
+# --------------------------------------------------------------------------------------
 # Startup
 # --------------------------------------------------------------------------------------
 @app.on_event("startup")
@@ -492,6 +806,8 @@ async def on_startup():
     await db.progress.create_index([("user_id", 1), ("lesson_id", 1)], unique=True)
     await db.assessments.create_index("user_id")
     await db.reviews.create_index([("user_id", 1), ("next_review_at", 1)])
+    await db.custom_lessons.create_index("id", unique=True)
+    await db.comments.create_index([("lesson_id", 1), ("created_at", -1)])
     # seed admin
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com").lower()
     admin_pw = os.environ.get("ADMIN_PASSWORD", "admin123")

@@ -12,7 +12,7 @@ export default function Tracks() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
-      <div className="soa-mono text-[11px] tracking-widest text-[#0047FF]">CURRICULUM · 10 TRACKS LIVE</div>
+      <div className="soa-mono text-[11px] tracking-widest text-[#0047FF]">CURRICULUM</div>
       <h1 className="soa-display text-4xl md:text-6xl font-black tracking-tighter mt-2">
         Track → Module → Lesson
       </h1>
@@ -30,12 +30,12 @@ export default function Tracks() {
           >
             <div className="flex items-center justify-between">
               <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">TRACK · {String(t.order).padStart(2, "0")}</div>
-              <span className="soa-chip soa-chip-primary">LIVE</span>
+              <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">{t.lessonCount} LESSONS</div>
             </div>
             <h2 className="soa-display text-xl md:text-2xl font-bold mt-3 leading-tight">{t.title}</h2>
             <p className="text-sm text-[rgb(var(--soa-ink-2))] mt-2">{t.summary}</p>
             <div className="flex items-center justify-between mt-6 soa-mono text-[11px] tracking-widest text-[rgb(var(--soa-ink-2))]">
-              <span>{t.lessonCount} LESSONS · {t.moduleCount} MODULES</span>
+              <span>{t.moduleCount} MODULES</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" strokeWidth={1.5} />
             </div>
           </Link>

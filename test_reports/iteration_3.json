@@ -1,0 +1,50 @@
+{
+  "summary": "Phase 3 end-to-end testing. Backend: 46/47 pytest tests green (16 phase1 + 11 phase2 + 19 phase3) — one HIGH bug: GET /api/glossary returns only 20 of 69 terms due to default limit=20 in search_glossary. All other Phase 3 backend endpoints (search, badges catalog+me, leaderboard, /auth/tier, comments, certificates negative+positive, control-theorist badge, five-lessons badge, admin/stats, admin/lessons CRUD, role gating, seed-delete-400) work as specified. Frontend: landing is debranded (no v1.0/MVP, shows VENDOR-NEUTRAL · VISUAL-FIRST · PRESENT-DAY + '10 TRACKS · 46 LESSONS · 11 INTERACTIVE WIDGETS'); /glossary renders & search filters; /leaderboard renders with BY XP / BY STREAK; Cmd+K opens command palette, typing 'PID' shows results; /lessons/l-pid shows ELI12/Standard/Deep dive tier buttons and Discussion section with sign-in prompt for anon; /dashboard shows Badge Shelf with 21 badge tiles via data-testid; /admin gated to admin users (anon → login), as admin shows stats tiles (38 users, 35 completions, 6 assessments, 3 comments), Top-10 lessons list, and Create lesson form. UI admin login via the /login form drives auth context properly.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "GET /api/glossary", "issue": "Returns only 20 of 69 terms. Root cause: server.py:646 calls search_glossary(q) with no limit, and search_glossary defaults limit=20 (glossary.py:75). Fix: in /api/glossary use limit=len(GLOSSARY) (or pass a high limit) so the unfiltered request returns the full catalog. Filtered queries already work correctly (e.g. ?q=RTK returns RTK+PPK).", "priority": "HIGH"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "ELI12 yellow banner detection", "issue": "Clicked ELI12 button on /lessons/l-pid; could not assert the literal text 'EXPLAIN LIKE I'M 12' on the page after click. Tier button is wired (button exists, click registers). Likely the banner uses different phrasing or is rendered conditionally — please verify the banner copy/component selector. Not a hard failure; tier selector itself works.", "affected_selectors": ["button:has-text('ELI12')", "[data-testid*='eli12-banner']"]}
+    ],
+    "design_issues": [
+      {"screen": "Lesson page (Recharts)", "issues": ["Recharts width(-1)/height(-1) warnings still fire on first mount — pre-existing from iter1/iter2, parent needs explicit min-height."]},
+      {"screen": "Landing 3D hero", "issues": ["THREE.Clock deprecation warning + GL_CLOSE_PATH_NV/ReadPixels GPU-stall warnings — non-blocking, pre-existing."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_backend_api.py",
+    "/app/backend/tests/test_phase2_api.py",
+    "/app/backend/tests/test_phase3_api.py",
+    "/app/test_reports/pytest/pytest_iter3.xml"
+  ],
+  "action_items": [
+    "HIGH: Fix GET /api/glossary truncating at 20 terms — change server.py glossary() to call search_glossary(q, limit=len(GLOSSARY)) (or remove the default cap when q is empty). Tests expect 50+; backend file has 69.",
+    "Verify ELI12 tier banner copy + add a data-testid='eli12-banner' so the banner is robustly testable. The banner did not produce the literal string 'EXPLAIN LIKE' after clicking ELI12 in DOM scrape — could be image/icon-only or different wording.",
+    "Optional: phase 2 test_complete_with_low_score_creates_review_and_answer_flow was updated to assert count>=1 (Phase 3 changed scheduling to now-1m); previous count==0 assertion was outdated and is now fixed in /app/backend/tests/test_phase2_api.py."
+  ],
+  "critical_code_review_comments": [
+    "glossary.py search_glossary(default limit=20) silently caps the public /api/glossary listing — review every consumer of this helper; the global search uses limit=10 explicitly which is fine, but the catalog endpoint must request the full list. This is the only failing Phase-3 contract.",
+    "server.py /api/lessons/{id}/comments has no rate limit / abuse protection. body up to 2000 chars is allowed for any authed user — fine for MVP but add a per-user-per-minute throttle before exposing publicly.",
+    "Admin role check uses inline `if user.get('role') != 'admin': raise 403` in 5+ endpoints — extract to a Depends(get_admin_user) dependency to DRY this up.",
+    "cert_id is derived from user_id[:8].upper() + last track id segment — non-unique if two users happen to share a uuid prefix (extremely unlikely but worth noting). Storing the issued cert in mongo on first eligibility would make awarded_at stable too (currently recomputed from max(progress.completed_at) on every GET).",
+    "_resolve_lesson is async but called inside loops in /tracks/{id} per request — fine for now (db.custom_lessons is small), but consider memoizing if custom_lessons grows.",
+    "Cookie + Bearer dual-auth in auth.py still prefers cookie over Authorization header (carried over from iter2). Documented; non-blocking."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase3_api.py (new — 20 Phase 3 tests)",
+    "/app/backend/tests/test_phase2_api.py (updated review-queue assertion to match new now-1m scheduling)",
+    "/app/test_reports/pytest/pytest_iter3.xml (generated)"
+  ],
+  "success_rate": {"backend": "97.9% (46/47)", "frontend": "~95% of requested Phase 3 flows verified"},
+  "test_credentials": "Admin: admin@scienceofautonomy.app / autonomy2026. Ad-hoc test users TEST_p3_*/TEST_p3cert_*/TEST_p3pid_* registered with password TestPass123!.",
+  "seed_data_creation": "Admin completed 5 foundations lessons during testing (admin earned 'five-lessons' badge as part of certificate-eligibility test). Multiple TEST_ prefixed users created but not cleaned up. Custom lessons created during admin CRUD test are deleted by the same test.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 3 backend suite is /app/backend/tests/test_phase3_api.py (20 tests). After main agent fixes glossary truncation, re-run `pytest /app/backend/tests/ -v` — should be 47/47. Foundations track lessons for certificate testing are l-autonomy-ladder, l-ooda-loop, l-lift-drag, l-airframes, l-stability. Custom-lesson admin CRUD uses payload { id, title, summary, trackId='track-foundations', moduleId='mod-foundations-1', blocks:[...], quiz:[] }. Admin role gating returns 403 (not 401) — important for tests. Cmd+K palette is implemented via Ctrl+K too; data-testid badge tiles exist on /dashboard.",
+  "rca of the issue": "GET /api/glossary returns 20 instead of 69 because server.py:646 → search_glossary(q) → glossary.py:75 default limit=20 truncates the list even when q is empty. Reproduce: curl <BASE>/api/glossary | jq '.terms | length' → 20. Fix: server.py change to `search_glossary(q, limit=len(GLOSSARY))` or change default limit to None/large in glossary.py."
+}

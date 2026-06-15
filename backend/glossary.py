@@ -1,0 +1,83 @@
+"""Glossary of key technical terms — vendor-neutral, present-day accurate."""
+
+GLOSSARY = [
+    {"term": "Autonomy", "category": "Concept", "def": "The capacity of a machine to perform a task without continuous human input. Comes in degrees, not a single switch."},
+    {"term": "OODA Loop", "category": "Concept", "def": "Observe → Orient → Decide → Act. The fundamental cycle behind every autonomous system."},
+    {"term": "Teleoperation", "category": "Concept", "def": "Direct remote control of a machine by a human over a communication link."},
+    {"term": "BVLOS", "category": "Operations", "def": "Beyond Visual Line of Sight — operations where the pilot cannot see the aircraft directly."},
+    {"term": "VLOS", "category": "Operations", "def": "Visual Line of Sight — the pilot can see the aircraft with the unaided eye."},
+    {"term": "RTH", "category": "Safety", "def": "Return to Home — a failsafe behavior that returns the aircraft to a stored home position."},
+    {"term": "Geofence", "category": "Safety", "def": "A virtual boundary enforced by the autopilot to keep the aircraft inside (or outside) a defined region."},
+    {"term": "Failsafe", "category": "Safety", "def": "A pre-defined automatic behavior triggered when a fault is detected (low battery, link loss, etc.)."},
+    {"term": "Quadrotor", "category": "Airframe", "def": "A multirotor with four fixed-pitch rotors. Inherently unstable; requires a flight controller."},
+    {"term": "VTOL", "category": "Airframe", "def": "Vertical Take-Off and Landing. Hybrid airframes that hover like multirotors and cruise like planes."},
+    {"term": "Lift", "category": "Aerodynamics", "def": "The aerodynamic force perpendicular to the airflow that supports an aircraft's weight."},
+    {"term": "Drag", "category": "Aerodynamics", "def": "Aerodynamic resistance opposing motion through the air."},
+    {"term": "Stall", "category": "Aerodynamics", "def": "Sudden loss of lift when the angle of attack exceeds a critical value and flow separates from the wing."},
+    {"term": "Angle of Attack (AoA)", "category": "Aerodynamics", "def": "The angle between the wing chord and the relative wind."},
+    {"term": "BLDC Motor", "category": "Propulsion", "def": "Brushless DC motor — electronically commutated, common in small drones for its efficiency and power-to-weight."},
+    {"term": "ESC", "category": "Propulsion", "def": "Electronic Speed Controller — converts DC battery power into 3-phase drive for a BLDC motor."},
+    {"term": "Propeller Disc Loading", "category": "Propulsion", "def": "Thrust per unit propeller-disc area. Higher loading = louder, less efficient hover."},
+    {"term": "LiPo", "category": "Power", "def": "Lithium-polymer battery. High specific energy and C-rating; thermal management matters."},
+    {"term": "C-rating", "category": "Power", "def": "Maximum continuous current a battery can deliver, expressed as a multiple of its capacity."},
+    {"term": "Flight Controller (FC)", "category": "Avionics", "def": "The dedicated computer running the inner control loops (rate, attitude). Common open stacks: PX4, ArduPilot."},
+    {"term": "Companion Computer", "category": "Avionics", "def": "Higher-power onboard computer for vision, planning, and AI — paired with the flight controller."},
+    {"term": "IMU", "category": "Sensors", "def": "Inertial Measurement Unit — combines accelerometer + gyroscope (often magnetometer) to measure motion."},
+    {"term": "Accelerometer", "category": "Sensors", "def": "Sensor measuring linear acceleration along three axes."},
+    {"term": "Gyroscope", "category": "Sensors", "def": "Sensor measuring angular velocity (rate of rotation) around three axes."},
+    {"term": "Magnetometer", "category": "Sensors", "def": "Sensor measuring the local magnetic field to derive an absolute heading."},
+    {"term": "Barometer", "category": "Sensors", "def": "Sensor measuring atmospheric pressure to infer altitude."},
+    {"term": "GNSS", "category": "Sensors", "def": "Global Navigation Satellite System — the umbrella term for GPS, GLONASS, Galileo, BeiDou."},
+    {"term": "RTK", "category": "Sensors", "def": "Real-Time Kinematic — GNSS technique using base-station corrections to achieve centimetre accuracy."},
+    {"term": "PPK", "category": "Sensors", "def": "Post-Processed Kinematic — like RTK but corrections applied after the flight."},
+    {"term": "LiDAR", "category": "Sensors", "def": "Light Detection And Ranging — laser-based distance/3D sensor."},
+    {"term": "Optical Flow", "category": "Sensors", "def": "Apparent motion of brightness patterns in an image — used for low-altitude velocity estimation."},
+    {"term": "Time-of-Flight (ToF)", "category": "Sensors", "def": "Distance sensor measuring how long emitted light takes to bounce back."},
+    {"term": "Gimbal", "category": "Payload", "def": "Multi-axis stabilized mount that holds a camera (or sensor) steady against drone motion."},
+    {"term": "Sensor Fusion", "category": "Perception", "def": "Combining multiple sensors into a single, more reliable state estimate."},
+    {"term": "Kalman Filter", "category": "Perception", "def": "Optimal recursive estimator that fuses noisy measurements with a motion model under Gaussian assumptions."},
+    {"term": "Complementary Filter", "category": "Perception", "def": "Lightweight filter combining a high-pass and a low-pass channel — fast on small autopilots."},
+    {"term": "Dead Reckoning", "category": "Navigation", "def": "Estimating position by integrating velocity from a known start point. Drifts over time."},
+    {"term": "SLAM", "category": "Navigation", "def": "Simultaneous Localization And Mapping — building a map and locating yourself in it at the same time."},
+    {"term": "VIO", "category": "Navigation", "def": "Visual-Inertial Odometry — fuses camera and IMU for low-drift egomotion."},
+    {"term": "Waypoint", "category": "Navigation", "def": "A target location used by a guidance system to define a mission."},
+    {"term": "Trajectory", "category": "Navigation", "def": "A time-parameterised path that respects the vehicle's dynamics."},
+    {"term": "Setpoint", "category": "Control", "def": "The reference (desired) value a controller is trying to track."},
+    {"term": "Error", "category": "Control", "def": "Difference between setpoint and current measurement."},
+    {"term": "PID Controller", "category": "Control", "def": "Proportional + Integral + Derivative feedback controller. Workhorse of low-level drone control."},
+    {"term": "Cascaded Control", "category": "Control", "def": "Nested control loops, each running faster than its outer parent (e.g., rate inside attitude inside position)."},
+    {"term": "Overshoot", "category": "Control", "def": "How far a controlled response exceeds its setpoint before settling."},
+    {"term": "Settling Time", "category": "Control", "def": "Time taken for the response to stay within a small band around the setpoint."},
+    {"term": "MAVLink", "category": "Software", "def": "Open protocol for messaging between drone autopilots and ground stations / companion computers."},
+    {"term": "ROS 2", "category": "Software", "def": "Robot Operating System 2 — open-source middleware for robotics, used on companion computers."},
+    {"term": "Ground Control Station (GCS)", "category": "Software", "def": "Operator-facing application that plans missions, shows telemetry and video, and issues commands."},
+    {"term": "Edge AI", "category": "AI", "def": "Running inference (and sometimes training) onboard the drone rather than in the cloud."},
+    {"term": "Detection", "category": "AI", "def": "Finding objects in an image with bounding boxes."},
+    {"term": "Segmentation", "category": "AI", "def": "Per-pixel classification of an image."},
+    {"term": "Reinforcement Learning", "category": "AI", "def": "Training policies via interaction with an environment to maximise cumulative reward."},
+    {"term": "Boids", "category": "Swarms", "def": "Classic flocking model with three local rules: separation, alignment, cohesion."},
+    {"term": "Consensus", "category": "Swarms", "def": "Distributed agreement among nodes through repeated local communication."},
+    {"term": "Mesh Network", "category": "Comms", "def": "Network topology where every node may relay traffic — self-healing under failures."},
+    {"term": "Telemetry", "category": "Comms", "def": "Down-link data flow (battery, position, status) from the aircraft to the ground."},
+    {"term": "Latency", "category": "Comms", "def": "Time delay between sending and receiving data. Critical for teleoperation."},
+    {"term": "NDVI", "category": "Applications", "def": "Normalized Difference Vegetation Index — multispectral metric of crop / canopy health."},
+    {"term": "Photogrammetry", "category": "Applications", "def": "Reconstructing 3D geometry from overlapping 2D photographs."},
+    {"term": "Orthomosaic", "category": "Applications", "def": "Geometrically corrected aerial image composite with uniform scale, usable like a map."},
+    {"term": "UAM", "category": "Applications", "def": "Urban Air Mobility — passenger / cargo aircraft operating in urban airspace."},
+    {"term": "Situational Awareness (SA)", "category": "Human Factors", "def": "Endsley's framework: Perception (Lv1) → Comprehension (Lv2) → Projection (Lv3)."},
+    {"term": "Vigilance Decrement", "category": "Human Factors", "def": "Decline in sustained-attention performance over time on monotonous tasks."},
+    {"term": "Automation Complacency", "category": "Human Factors", "def": "Operator over-trust in an automated system that leads to reduced monitoring."},
+    {"term": "Meaningful Human Control", "category": "Ethics", "def": "Design principle ensuring a human retains a genuine, informed role in autonomous decisions."},
+    {"term": "Dual-Use", "category": "Ethics", "def": "Technology with both civilian and military applications."},
+]
+
+
+def search_glossary(query: str, limit: int = 20):
+    if not query:
+        return GLOSSARY[:limit]
+    q = query.lower().strip()
+    out = []
+    for item in GLOSSARY:
+        if q in item["term"].lower() or q in item["def"].lower() or q in item["category"].lower():
+            out.append(item)
+    return out[:limit]

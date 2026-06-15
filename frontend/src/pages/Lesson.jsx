@@ -5,8 +5,10 @@ import { useAuth } from "@/lib/auth";
 import { TID } from "@/lib/tids";
 import LessonBlock from "@/components/lesson/LessonBlock";
 import Quiz from "@/components/lesson/Quiz";
+import Comments from "@/components/lesson/Comments";
+import TierSelector, { useTier } from "@/components/TierSelector";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Share2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Share2, Baby } from "lucide-react";
 
 export default function Lesson() {
   const { lessonId } = useParams();
@@ -28,6 +30,9 @@ export default function Lesson() {
     try {
       const { data } = await api.post("/progress/complete", { lesson_id: lessonId, score });
       if (data?.xpAwarded) toast.success(`+${data.xpAwarded} XP earned`);
+      if (data?.newBadges?.length) {
+        data.newBadges.forEach((b) => toast.success(`Badge unlocked: ${b.replace(/-/g, " ")}`, { duration: 4000 }));
+      }
       await refresh();
       if (lesson?.nextLessonId) nav(`/lessons/${lesson.nextLessonId}`);
       else nav(`/tracks/${lesson.trackId}`);
@@ -38,20 +43,37 @@ export default function Lesson() {
 
   if (!lesson) return <div className="p-12 soa-mono text-sm">LOADING LESSON…</div>;
 
+  // Filter blocks based on tier preference: hide "deepdive" for ELI12 readers.
+  const tier = (user && user !== false ? user.tier : null) || (typeof window !== "undefined" ? localStorage.getItem("soa_tier_guest") : null) || "standard";
+  const blocks = (lesson.blocks || []).filter((b) => !(tier === "eli12" && b.type === "deepdive"));
+
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
       <Link to={`/tracks/${lesson.trackId}`} className="soa-mono text-[11px] tracking-widest text-[rgb(var(--soa-ink-3))] hover:text-[rgb(var(--soa-ink))] inline-flex items-center gap-1">
         <ArrowLeft className="w-3.5 h-3.5" strokeWidth={1.5} /> BACK TO TRACK
       </Link>
-      <div className="flex items-center gap-2 mt-3">
-        <span className="soa-chip soa-chip-primary">LESSON · {String(lesson.order).padStart(2, "0")}</span>
-        <span className="soa-chip">{lesson.estMinutes} MIN</span>
+      <div className="flex items-center justify-between gap-2 mt-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="soa-chip soa-chip-primary">LESSON · {String(lesson.order).padStart(2, "0")}</span>
+          <span className="soa-chip">{lesson.estMinutes} MIN</span>
+        </div>
+        <TierSelector inline />
       </div>
       <h1 data-testid={TID.lessonTitle} className="soa-display text-3xl md:text-5xl font-black tracking-tighter mt-3 leading-[1]">{lesson.title}</h1>
       <p className="text-[rgb(var(--soa-ink-2))] mt-2 max-w-2xl">{lesson.summary}</p>
 
+      {tier === "eli12" && (
+        <div className="mt-5 border-l-[3px] border-[#FFCC00] bg-[#FFCC00]/10 p-4 rounded-sm flex items-start gap-3" data-testid="eli12-intro">
+          <Baby className="w-5 h-5 mt-0.5 text-[rgb(var(--soa-ink))]" strokeWidth={1.6} />
+          <div>
+            <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-2))]">EXPLAIN LIKE I'M 12</div>
+            <div className="text-sm mt-1">No equations. No jargon. Just the idea.</div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-6 mt-10">
-        {lesson.blocks.map((b, i) => (
+        {blocks.map((b, i) => (
           <div key={i}>
             <LessonBlock block={b} />
           </div>
@@ -87,6 +109,8 @@ export default function Lesson() {
             </div>
           </div>
         )}
+
+        <Comments lessonId={lesson.id} />
       </div>
 
       <div className="flex items-center justify-between mt-10">

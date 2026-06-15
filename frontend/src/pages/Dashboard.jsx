@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { TID } from "@/lib/tids";
 import { Flame, Award, BookOpen, ArrowRight, Sparkles, RefreshCw } from "lucide-react";
+import BadgeShelf from "@/components/BadgeShelf";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -97,6 +98,8 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
+
+      <BadgeShelf />
 
       <div className="mt-12">
         <h2 className="soa-display text-2xl md:text-3xl font-bold">Recent activity</h2>

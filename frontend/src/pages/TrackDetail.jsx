@@ -33,6 +33,18 @@ export default function TrackDetail() {
         <div className="soa-mono text-[11px] tracking-widest text-[rgb(var(--soa-ink-2))]">{done}/{totalLessons} · {pct}%</div>
       </div>
 
+      {pct === 100 && (
+        <div className="mt-4 border-l-[3px] border-[#0047FF] bg-[#0047FF]/5 p-5 rounded-sm flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <div className="soa-mono text-[10px] tracking-widest text-[#0047FF]">TRACK COMPLETE</div>
+            <div className="soa-display text-xl font-bold mt-1">You've earned a certificate.</div>
+          </div>
+          <Link data-testid={`get-cert-${track.id}`} to={`/certificates/${track.id}`} className="soa-btn-primary">
+            View certificate
+          </Link>
+        </div>
+      )}
+
       <div className="space-y-10 mt-12">
         {track.modules.map((m) => (
           <div key={m.id} data-testid={TID.moduleCard(m.id)}>

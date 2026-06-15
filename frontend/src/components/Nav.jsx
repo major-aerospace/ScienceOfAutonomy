@@ -2,6 +2,7 @@ import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { TID } from "@/lib/tids";
 import { Plane } from "lucide-react";
+import CommandPalette from "@/components/CommandPalette";
 
 const linkBase = "soa-mono uppercase tracking-widest text-[12px] font-semibold px-3 py-2 transition-colors";
 const linkActive = "text-[rgb(var(--soa-primary))]";
@@ -22,7 +23,7 @@ export default function Nav() {
           <div className="leading-none">
             <div className="soa-display text-[15px] font-black tracking-tight">SCIENCE OF AUTONOMY</div>
             <div className="soa-mono text-[9px] tracking-[0.25em] text-[rgb(var(--soa-ink-3))] mt-0.5">
-              v1.0 · PRINCIPLES OF UNMANNED SYSTEMS
+              PRINCIPLES OF UNMANNED SYSTEMS
             </div>
           </div>
         </Link>
@@ -30,16 +31,22 @@ export default function Nav() {
         <nav className="hidden md:flex items-center gap-1">
           <NavLink data-testid={TID.navLinkTracks} to="/tracks" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Curriculum</NavLink>
           <NavLink data-testid={TID.navLinkAssessment} to="/assessment" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Dronability</NavLink>
+          <NavLink data-testid="nav-link-glossary" to="/glossary" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Glossary</NavLink>
+          <NavLink data-testid="nav-link-leaderboard" to="/leaderboard" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Leaderboard</NavLink>
           <NavLink data-testid={TID.navLinkStudio} to="/studio" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Studio</NavLink>
           {authed && (
             <>
               <NavLink data-testid="nav-link-review" to="/review" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Review</NavLink>
               <NavLink data-testid={TID.navLinkDashboard} to="/dashboard" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Dashboard</NavLink>
+              {user.role === "admin" && (
+                <NavLink data-testid="nav-link-admin" to="/admin" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Admin</NavLink>
+              )}
             </>
           )}
         </nav>
 
         <div className="flex items-center gap-2">
+          <CommandPalette />
           {authed ? (
             <>
               <div className="hidden sm:flex flex-col items-end leading-none mr-2">

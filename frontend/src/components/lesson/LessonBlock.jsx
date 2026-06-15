@@ -3,6 +3,7 @@ import { ChevronDown } from "lucide-react";
 import Diagram from "./Diagram";
 import Chart from "./Chart";
 import { TID } from "@/lib/tids";
+import { useTier } from "@/components/TierSelector";
 
 // Widgets (lazy-loaded to keep initial bundle small)
 const PIDTuner = lazy(() => import("@/components/widgets/PIDTuner"));
@@ -46,26 +47,9 @@ function Widget({ id }) {
   );
 }
 
-function Caption({ text }) {
-  return (
-    <div className="text-center max-w-3xl mx-auto py-2">
-      <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">CAPTION</div>
-      <p className="text-lg md:text-xl text-[rgb(var(--soa-ink))] mt-1">{text}</p>
-    </div>
-  );
-}
-
-function Takeaway({ text }) {
-  return (
-    <div className="border-l-[3px] border-[#0047FF] bg-[#0047FF]/5 p-5 rounded-sm">
-      <div className="soa-mono text-[10px] tracking-widest text-[#0047FF]">KEY TAKEAWAY</div>
-      <div className="soa-display text-2xl font-black mt-1">{text}</div>
-    </div>
-  );
-}
-
 function DeepDive({ text }) {
-  const [open, setOpen] = useState(false);
+  const tier = useTier();
+  const [open, setOpen] = useState(tier === "deep");
   return (
     <div className="bg-white border-[1.5px] border-[rgb(var(--soa-line))] rounded-sm">
       <button
@@ -79,6 +63,29 @@ function DeepDive({ text }) {
       {open && (
         <div className="px-4 pb-4 text-sm text-[rgb(var(--soa-ink-2))] leading-relaxed">{text}</div>
       )}
+    </div>
+  );
+}
+
+function Caption({ text }) {
+  const tier = useTier();
+  // ELI12: pre-pend friendly framing on long captions
+  const display = tier === "eli12" && text.length > 60 ? `Like this: ${text}` : text;
+  return (
+    <div className="text-center max-w-3xl mx-auto py-2">
+      <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">
+        {tier === "eli12" ? "EXPLAINED SIMPLY" : "CAPTION"}
+      </div>
+      <p className="text-lg md:text-xl text-[rgb(var(--soa-ink))] mt-1">{display}</p>
+    </div>
+  );
+}
+
+function Takeaway({ text }) {
+  return (
+    <div className="border-l-[3px] border-[#0047FF] bg-[#0047FF]/5 p-5 rounded-sm">
+      <div className="soa-mono text-[10px] tracking-widest text-[#0047FF]">KEY TAKEAWAY</div>
+      <div className="soa-display text-2xl font-black mt-1">{text}</div>
     </div>
   );
 }

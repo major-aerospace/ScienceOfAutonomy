@@ -119,14 +119,14 @@ def test_complete_with_low_score_creates_review_and_answer_flow(s, fresh_user):
     r = s.post(f"{API}/progress/complete", headers=h, json={"lesson_id": "l-pid", "score": 0.5})
     assert r.status_code == 200
 
-    # GET /review/queue contract — items default to next_review_at = now+1d → expect 0 items
+    # GET /review/queue — Phase 3 changed scheduling to now-1m for immediate review
     rq = s.get(f"{API}/review/queue", headers=h)
     assert rq.status_code == 200
     body = rq.json()
     assert "items" in body and "count" in body
     assert isinstance(body["items"], list)
-    # Schedule is +24h, so should be 0 right now.
-    assert body["count"] == 0
+    # Phase 3: first review is due immediately
+    assert body["count"] >= 1
 
 
 def test_review_answer_correct_and_incorrect(s):

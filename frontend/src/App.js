@@ -15,6 +15,10 @@ import Assessment from "@/pages/Assessment";
 import Studio from "@/pages/Studio";
 import NotFound from "@/pages/NotFound";
 import Review from "@/pages/Review";
+import Glossary from "@/pages/Glossary";
+import Leaderboard from "@/pages/Leaderboard";
+import Certificate from "@/pages/Certificate";
+import Admin from "@/pages/Admin";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 
@@ -42,6 +46,10 @@ function Shell() {
           <Route path="/assessment" element={<Assessment />} />
           <Route path="/studio" element={<Studio />} />
           <Route path="/review" element={<ProtectedRoute><Review /></ProtectedRoute>} />
+          <Route path="/glossary" element={<Glossary />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/certificates/:trackId" element={<ProtectedRoute><Certificate /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

@@ -264,3 +264,14 @@
         transition-duration: 0.001ms !important;
     }
 }
+
+@media print {
+    /* When printing a certificate page, hide nav, footer and all non-cert content. */
+    nav, header, footer, .print\\:hidden { display: none !important; }
+    body { background: #FFFFFF !important; }
+    #cert-page {
+        box-shadow: none !important;
+        border: none !important;
+        page-break-inside: avoid;
+    }
+}
