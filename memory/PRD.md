@@ -46,10 +46,17 @@ Build a vendor-neutral, visual-first, PWA-ready interactive learning platform fo
 ### Maintenance (Feb 2026)
 - Fixed React Hook `exhaustive-deps` warnings in `Comments.jsx` (wrapped `load` in `useCallback`) and `Vigilance.jsx` (wrapped `end` in `useCallback`, mirrored state into refs to keep effect stable, escaped apostrophe). Frontend now compiles clean (no warnings).
 
+### Phase 6 — Google Auth, Content Studio Cards, CMS Overrides (Feb 2026)
+- **Emergent-managed Google Auth** alongside JWT: `POST /api/auth/google-session` exchanges Emergent `session_id` server-side, find-or-creates user in `db.users`, issues our own JWT. Frontend adds `Continue with Google` button on `/login` + `/register` and a new `/auth/callback` page. Existing email/password login untouched. Playbook: `/app/auth_testing.md`.
+- **Content Studio export**: `/api/studio/calendar.csv` now takes `?weeks=4&trackId=...` and defaults to a 20-row 4-week posting plan; new per-lesson Canvas-based downloadable cards (1080×1080 square + 1080×1920 Reels/Shorts) via `/app/frontend/src/lib/cardGen.js`.
+- **CMS authoring on DB (override pattern)**: new `db.lesson_overrides` collection layers admin edits on top of seed lessons without changing Python files. New admin endpoints `GET /api/admin/all-lessons`, `GET /api/admin/lessons/{id}`, `PUT /api/admin/lessons/{id}` (writes to overrides for seed, in-place for custom), `DELETE /api/admin/lessons/{id}/override` (revert). Admin UI fully rewritten with search/filter and a JSON-aware edit modal.
+- 83/83 backend pytest pass (11 new Phase-6 tests in `test_phase6_api.py`); full Playwright E2E pass for all 7 scenarios.
+
 ## Backlog
-- P1 — Content Studio export (real CSV calendar download + auto-generated square/vertical takeaway cards for Reels/Shorts).
-- P1 — CMS authoring DB migration (move `seed_data.py` curriculum into MongoDB so Admin CMS can fully CRUD).
-- P0/V2 — Emergent-managed Google Auth alongside JWT.
+- P2 — Replace `window.confirm()` in Admin revert with shadcn AlertDialog (polish only).
+- P2 — Public per-mission simulator leaderboard.
+- Refactor `server.py` into `/app/backend/routes` and `/app/backend/models` as the app grows.
+- Native Android publish via Capacitor.
 
 ## Credentials
 See `/app/memory/test_credentials.md`.
