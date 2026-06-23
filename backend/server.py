@@ -806,9 +806,20 @@ async def delete_custom_lesson(lesson_id: str, request: Request):
 # --------------------------------------------------------------------------------------
 # Simulator runs (also feeds the Psychomotor assessment domain)
 # --------------------------------------------------------------------------------------
+MISSION_GATES = {"gate-course-1": 5}
+
+
 @api.post("/sim/score")
 async def sim_score(body: SimScore, request: Request):
     user = await get_current_user(request, db)
+    # Anti-cheat: require the configured number of gates, and a sane minimum time.
+    required = MISSION_GATES.get(body.mission)
+    if required is None:
+        raise HTTPException(400, "Unknown mission")
+    if body.gates_cleared < required:
+        raise HTTPException(400, f"Run incomplete: {body.gates_cleared}/{required} gates")
+    if body.time_sec < 5.0:
+        raise HTTPException(400, "Implausibly fast run rejected")
     doc = {
         "id": str(uuid.uuid4()),
         "user_id": user["id"],

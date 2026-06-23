@@ -60,18 +60,18 @@ export default function Nav() {
           </button>
           {authed ? (
             <>
-              <div className="hidden sm:flex flex-col items-end leading-none mr-2">
+              <div className="hidden sm:flex flex-col items-end leading-none mr-2 whitespace-nowrap">
                 <span className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">XP · STREAK</span>
                 <span className="soa-mono text-[13px] font-bold mt-0.5">
                   {user.xp} <span className="text-[rgb(var(--soa-ink-3))]">·</span> {user.streak}d
                 </span>
               </div>
-              <button data-testid={TID.navLogout} onClick={logout} className="soa-btn-ghost">Sign out</button>
+              <button data-testid={TID.navLogout} onClick={logout} className="soa-btn-ghost whitespace-nowrap">Sign out</button>
             </>
           ) : (
             <>
-              <Link to="/login" data-testid={TID.navLogin} className="soa-btn-ghost">Sign in</Link>
-              <Link to="/register" data-testid={TID.navRegister} className="soa-btn-primary">Start</Link>
+              <Link to="/login" data-testid={TID.navLogin} className="soa-btn-ghost whitespace-nowrap">Sign in</Link>
+              <Link to="/register" data-testid={TID.navRegister} className="soa-btn-primary whitespace-nowrap">Start</Link>
             </>
           )}
         </div>
