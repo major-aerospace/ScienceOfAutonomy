@@ -21,6 +21,19 @@
     --soa-panel: 10 10 10;          /* instrument panel dark */
 }
 
+html[data-theme="dark"] {
+    --soa-bg: 10 10 10;
+    --soa-surface: 20 20 22;
+    --soa-ink: 240 240 240;
+    --soa-ink-2: 170 170 170;
+    --soa-ink-3: 110 110 110;
+    --soa-line: 38 38 42;
+    --soa-line-2: 240 240 240;
+    --soa-primary: 90 140 255;
+    --soa-primary-hover: 60 110 235;
+    --soa-panel: 6 6 8;
+}
+
 @layer base {
     :root {
         --background: 0 0% 98%;
@@ -43,6 +56,22 @@
         --input: 0 0% 90%;
         --ring: 222 100% 50%;
         --radius: 0.125rem;
+    }
+    html[data-theme="dark"] {
+        --background: 0 0% 4%;
+        --foreground: 0 0% 96%;
+        --card: 0 0% 8%;
+        --card-foreground: 0 0% 96%;
+        --popover: 0 0% 8%;
+        --popover-foreground: 0 0% 96%;
+        --primary: 222 100% 65%;
+        --primary-foreground: 0 0% 4%;
+        --secondary: 0 0% 12%;
+        --secondary-foreground: 0 0% 96%;
+        --muted: 0 0% 14%;
+        --muted-foreground: 0 0% 65%;
+        --border: 0 0% 16%;
+        --input: 0 0% 16%;
     }
 }
 
@@ -89,6 +118,7 @@
         border: 1.5px solid rgb(var(--soa-line));
         border-radius: 2px;
         transition: border-color 200ms ease, transform 200ms ease;
+        color: rgb(var(--soa-ink));
     }
     .soa-card:hover {
         border-color: rgb(var(--soa-ink));

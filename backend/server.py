@@ -97,6 +97,12 @@ class AdminLessonCreate(BaseModel):
     socialClip: Optional[dict] = None
 
 
+class SimScore(BaseModel):
+    mission: str
+    time_sec: float = Field(gt=0)
+    gates_cleared: int = Field(ge=0)
+
+
 # --------------------------------------------------------------------------------------
 # Helpers
 # --------------------------------------------------------------------------------------
@@ -798,6 +804,75 @@ async def delete_custom_lesson(lesson_id: str, request: Request):
 
 
 # --------------------------------------------------------------------------------------
+# Simulator runs (also feeds the Psychomotor assessment domain)
+# --------------------------------------------------------------------------------------
+@api.post("/sim/score")
+async def sim_score(body: SimScore, request: Request):
+    user = await get_current_user(request, db)
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "mission": body.mission,
+        "time_sec": body.time_sec,
+        "gates_cleared": body.gates_cleared,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    # Best BEFORE inserting the new run
+    existing = await db.sim_runs.find(
+        {"user_id": user["id"], "mission": body.mission},
+        {"_id": 0, "time_sec": 1},
+    ).sort("time_sec", 1).limit(1).to_list(1)
+    prev_best_time = existing[0]["time_sec"] if existing else None
+
+    await db.sim_runs.insert_one(doc)
+
+    is_new_best = (prev_best_time is None) or (body.time_sec < prev_best_time)
+    awarded = 0
+    if is_new_best:
+        awarded = max(10, int(120 - min(body.time_sec, 110)))  # faster = more XP
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$inc": {"xp": awarded}},
+        )
+        fresh = await db.users.find_one({"id": user["id"]})
+        if fresh:
+            await db.users.update_one({"id": user["id"]}, {"$set": {"level": xp_to_level(fresh.get("xp", 0))}})
+    await _grant_badges(user["id"])
+    return {
+        "is_new_best": is_new_best,
+        "xpAwarded": awarded,
+        "best": {"time_sec": min(body.time_sec, prev_best_time) if prev_best_time else body.time_sec},
+    }
+
+
+@api.get("/sim/best")
+async def sim_best(request: Request, mission: str = "gate-course-1"):
+    user = await get_current_user(request, db)
+    row = await db.sim_runs.find(
+        {"user_id": user["id"], "mission": mission},
+        {"_id": 0},
+    ).sort("time_sec", 1).limit(1).to_list(1)
+    return {"best": row[0] if row else None}
+
+
+@api.get("/sim/leaderboard")
+async def sim_leaderboard(mission: str = "gate-course-1", limit: int = 20):
+    pipeline = [
+        {"$match": {"mission": mission}},
+        {"$sort": {"time_sec": 1}},
+        {"$group": {"_id": "$user_id", "best": {"$first": "$time_sec"}, "at": {"$first": "$created_at"}}},
+        {"$sort": {"best": 1}},
+        {"$limit": limit},
+    ]
+    rows = await db.sim_runs.aggregate(pipeline).to_list(limit)
+    out = []
+    for i, r in enumerate(rows):
+        u = await db.users.find_one({"id": r["_id"]}, {"_id": 0, "name": 1})
+        out.append({"rank": i + 1, "name": u.get("name", "Anonymous") if u else "Anonymous", "time_sec": r["best"]})
+    return {"mission": mission, "entries": out}
+
+
+# --------------------------------------------------------------------------------------
 # Startup
 # --------------------------------------------------------------------------------------
 @app.on_event("startup")
@@ -808,6 +883,7 @@ async def on_startup():
     await db.reviews.create_index([("user_id", 1), ("next_review_at", 1)])
     await db.custom_lessons.create_index("id", unique=True)
     await db.comments.create_index([("lesson_id", 1), ("created_at", -1)])
+    await db.sim_runs.create_index([("user_id", 1), ("mission", 1), ("time_sec", 1)])
     # seed admin
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com").lower()
     admin_pw = os.environ.get("ADMIN_PASSWORD", "admin123")

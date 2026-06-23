@@ -1,0 +1,45 @@
+{
+  "summary": "Phase 4 (Simulator + Theme + Landing polish) — FULL PASS. Backend: 11/11 new Phase-4 tests green; 58/58 across phases 1-4. /api/sim/score correctly returns is_new_best/xpAwarded/best, awards XP only on new personal bests (verified XP delta on user doc), and rejects slower runs with xpAwarded=0. /api/sim/best returns the personal best (or null for fresh users). /api/sim/leaderboard returns ascending entries with rank/name/time_sec. Regression: /api/, /api/tracks (10 tracks), /api/lessons/l-pid still green. Frontend (Playwright @ 1920x1080): Landing renders cinematic hero with headline 'Learn autonomy the way you’d design it.', 'OPEN THE SIMULATOR' CTA, '10 TRACKS · 46 LESSONS · 1 SIMULATOR' line, 3-pillar Learn/Assess/Fly grid, and a hero canvas (3D drone). Nav contains a SIMULATOR link and data-testid='theme-toggle' that flips html[data-theme] between light and dark. /simulator page exposes all required data-testids (sim-mode-3d, sim-mode-arcade, sim-start, sim-stage, hud-time, hud-gates, hud-last-run, hud-personal-best) and HUD tiles (TIME, GATES, LAST RUN, PERSONAL BEST). Clicking sim-start hides the 'Take off' overlay and the timer increments (observed 0.00s -> 2.39s after 2.2s). Switching to ARCADE renders a smaller 2D canvas (1078x520 -> 500x420) while the HUD persists. Dark theme on /simulator is fully legible: body rgb(10,10,10)/rgb(240,240,240); HUD card rgb(20,20,22)/rgb(240,240,240).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Top nav", "issues": ["'SIGN IN' label wraps to two lines in desktop nav at 1920px — visible as 'SIGN\\nIN'. Tighten white-space:nowrap on the auth nav item or shorten label to 'SIGN IN' on one line."]},
+      {"screen": "Simulator / Landing (R3F)", "issues": ["THREE.Clock deprecation warning + Canvas2D willReadFrequently performance hint in console — pre-existing, non-blocking."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase4_api.py",
+    "/app/test_reports/pytest/pytest_iter4.xml",
+    "/app/test_reports/pytest/pytest_iter4_all.xml"
+  ],
+  "action_items": [
+    "(Cosmetic only) Prevent 'SIGN IN' nav label from wrapping (white-space: nowrap or shorten copy).",
+    "(Optional) Silence THREE.Clock deprecation by switching to THREE.Timer in the 3D drone hero/sim scenes.",
+    "(Optional) Pass willReadFrequently:true when getting the 2D arcade canvas context to remove perf hint."
+  ],
+  "critical_code_review_comments": [
+    "server.py /api/sim/score awards XP from prev_best_time captured BEFORE the insert (correct), but it then re-reads the user doc and resets level via a separate update_one — could be a single $inc+level-recompute. Not a bug, just two DB roundtrips where one would do.",
+    "/api/sim/score uses max(10, int(120 - min(time_sec, 110))) so the floor is 10 XP for any new best, even at 110+ sec — acceptable, but document the bounds in API docs.",
+    "/api/sim/leaderboard does an N+1 lookup (one db.users.find_one per top entry). At limit=20 it's fine, but use a $lookup or a single $in query if leaderboard size grows.",
+    "SimScore.time_sec uses Field(gt=0) but there is no upper bound — a malicious client could submit 0.001s and game the leaderboard. Add a sane minimum (e.g. >= 5s) and/or require gates_cleared == required_gates(mission) for the run to count.",
+    "sim_score does not validate gates_cleared against mission requirements (gate-course-1 has 5 gates). A client could POST time_sec=10, gates_cleared=0 and still be #1 on the leaderboard. Server should reject runs with gates_cleared < required.",
+    "Frontend /simulator: clicking START does not appear to require auth (overlay hides + timer runs even if not signed in). Confirm intended UX — server will reject the final POST /api/sim/score with 401, but the user only finds out at end-of-run. Consider gating the START button on auth state or letting anonymous fly-without-score."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase4_api.py (new — 11 Phase 4 tests covering /api/sim/*)",
+    "/app/test_reports/pytest/pytest_iter4.xml (generated)",
+    "/app/test_reports/pytest/pytest_iter4_all.xml (generated — full 58-test regression)"
+  ],
+  "success_rate": {"backend": "100% (58/58 across phases 1-4; 11/11 new Phase 4)", "frontend": "100% of requested Phase 4 flows verified"},
+  "test_credentials": "Admin: admin@scienceofautonomy.app / autonomy2026. Phase-4 ad-hoc users TEST_p4a_*/TEST_p4b_* registered with password TestPass123!.",
+  "seed_data_creation": "Two new TEST_ users registered, each posted 1-3 sim runs to gate-course-1 (user A: 42.5s/60.0s/30.0s; user B: 75.0s). user_a's best (30.0s) currently leads the gate-course-1 leaderboard. No cleanup performed.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 4 backend suite is /app/backend/tests/test_phase4_api.py (11 tests). The session fixture has scope=module and shares cookies — for unauth tests use a fresh requests.Session(). The simulator's 3D Canvas renders fine in headless (canvas size 1078x520). The arcade-mode toggle changes the canvas element to 500x420; HUD testids stay the same in both modes. Dark theme is driven by html[data-theme='dark']; toggle is at data-testid='theme-toggle' in the Nav. R3F via React.createElement is intentional — do NOT add JSX inside Canvas. Pre-existing console warnings (THREE.Clock deprecation, GL_CLOSE_PATH_NV GPU stall, Canvas2D willReadFrequently) are non-blocking and were present in iter1-3.",
+  "rca of the issue": "No new bugs found in Phase 4. Recommended hardening for the leaderboard is server-side validation of (gates_cleared, time_sec) — see critical_code_review_comments items 4-5 — but not blocking for the requested phase."
+}

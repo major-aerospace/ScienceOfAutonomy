@@ -1,8 +1,9 @@
 import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { TID } from "@/lib/tids";
-import { Plane } from "lucide-react";
+import { Plane, Sun, Moon } from "lucide-react";
 import CommandPalette from "@/components/CommandPalette";
+import { useTheme } from "@/lib/theme";
 
 const linkBase = "soa-mono uppercase tracking-widest text-[12px] font-semibold px-3 py-2 transition-colors";
 const linkActive = "text-[rgb(var(--soa-primary))]";
@@ -10,6 +11,7 @@ const linkIdle = "text-[rgb(var(--soa-ink-2))] hover:text-[rgb(var(--soa-ink))]"
 
 export default function Nav() {
   const { user, logout } = useAuth();
+  const { theme, toggle } = useTheme();
   const authed = user && user !== false;
 
   return (
@@ -30,6 +32,7 @@ export default function Nav() {
 
         <nav className="hidden md:flex items-center gap-1">
           <NavLink data-testid={TID.navLinkTracks} to="/tracks" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Curriculum</NavLink>
+          <NavLink data-testid="nav-link-simulator" to="/simulator" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Simulator</NavLink>
           <NavLink data-testid={TID.navLinkAssessment} to="/assessment" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Dronability</NavLink>
           <NavLink data-testid="nav-link-glossary" to="/glossary" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Glossary</NavLink>
           <NavLink data-testid="nav-link-leaderboard" to="/leaderboard" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Leaderboard</NavLink>
@@ -47,6 +50,14 @@ export default function Nav() {
 
         <div className="flex items-center gap-2">
           <CommandPalette />
+          <button
+            data-testid="theme-toggle"
+            onClick={toggle}
+            aria-label="Toggle theme"
+            className="w-9 h-9 grid place-items-center border border-[rgb(var(--soa-line))] rounded-sm text-[rgb(var(--soa-ink-2))] hover:text-[rgb(var(--soa-ink))] hover:border-[rgb(var(--soa-ink))] transition-colors"
+          >
+            {theme === "light" ? <Moon className="w-4 h-4" strokeWidth={1.6} /> : <Sun className="w-4 h-4" strokeWidth={1.6} />}
+          </button>
           {authed ? (
             <>
               <div className="hidden sm:flex flex-col items-end leading-none mr-2">

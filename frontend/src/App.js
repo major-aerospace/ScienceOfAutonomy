@@ -2,6 +2,7 @@ import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { ThemeProvider } from "@/lib/theme";
 
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
@@ -19,6 +20,7 @@ import Glossary from "@/pages/Glossary";
 import Leaderboard from "@/pages/Leaderboard";
 import Certificate from "@/pages/Certificate";
 import Admin from "@/pages/Admin";
+import Simulator from "@/pages/Simulator";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 
@@ -50,6 +52,7 @@ function Shell() {
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/certificates/:trackId" element={<ProtectedRoute><Certificate /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+          <Route path="/simulator" element={<Simulator />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
@@ -60,11 +63,13 @@ function Shell() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Shell />
-        <Toaster position="top-right" toastOptions={{ className: "soa-mono" }} />
-      </BrowserRouter>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Shell />
+          <Toaster position="top-right" toastOptions={{ className: "soa-mono" }} />
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
