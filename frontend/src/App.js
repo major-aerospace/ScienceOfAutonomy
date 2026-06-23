@@ -21,6 +21,7 @@ import Leaderboard from "@/pages/Leaderboard";
 import Certificate from "@/pages/Certificate";
 import Admin from "@/pages/Admin";
 import Simulator from "@/pages/Simulator";
+import AuthCallback from "@/pages/AuthCallback";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 
@@ -53,6 +54,7 @@ function Shell() {
           <Route path="/certificates/:trackId" element={<ProtectedRoute><Certificate /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
           <Route path="/simulator" element={<Simulator />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

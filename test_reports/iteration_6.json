@@ -1,0 +1,44 @@
+{
+  "summary": "Phase 6 (Google Auth + Content Studio cards/calendar + CMS lesson overrides) — FULL PASS. Backend: 83/83 pytest (11 new Phase-6 + 72 regression) green. /api/auth/google-session correctly returns 400 (no session_id) and 401 (bogus X-Session-ID), with NO 200/500 leak. Existing /api/auth/login still 200 with {user, token}. Admin CMS: GET /api/admin/all-lessons returns 46 lessons (each w/ id/title/summary/trackId/moduleId/origin/edited), GET /api/admin/lessons/l-pid returns {lesson, origin:'seed'}, PUT with {title:'X'} returns edited=true + reflects in /api/tracks/track-gnc, PUT {} → 400, PUT on unknown id → 404, all admin endpoints w/o auth → 401, DELETE /override correctly reverts. /api/studio/calendar.csv defaults to 20 rows (4w×5d), weeks=6 → 30 rows, trackId=track-foundations filter works, Content-Disposition='attachment'. Frontend (Playwright @ 1920x1080): /login shows data-testid='google-signin-button' that triggers window.location.assign to 'https://auth.emergentagent.com/?redirect=https%3A%2F%2F<origin>%2Fauth%2Fcallback' (correct URL encoding, no fallback URLs). /register shows data-testid='google-signup-button'. JWT email/password login through UI (admin@scienceofautonomy.app / autonomy2026) lands on /dashboard. /auth/callback renders 'SIGNING YOU IN' (data-testid='auth-callback-status') — verified with bogus session_id that produces 401 from backend, then redirects to /login with 'Could not complete Google sign-in.' toast. Missing-session branch redirects to /login (toast not DOM-captured because nav is synchronous post-toast, but code path is correct per AuthCallback.jsx lines 25-29). /studio: weeks select (data-testid='studio-weeks-select') changes csv link from .../calendar.csv?weeks=4 to .../calendar.csv?weeks=6; download link (data-testid='studio-download-csv') returns 200 with content-type text/csv + Content-Disposition attachment; 46 square buttons (data-testid='studio-card-square-{lessonId}') + 46 vertical buttons (data-testid='studio-card-vertical-{lessonId}'); clicking each triggers PNG download with toast '1080 × 1080 card downloaded' / '1080 × 1920 card downloaded'. /admin: search (data-testid='admin-search') filters 46→1 for 'autonomy ladder', track-filter (data-testid='admin-track-filter') filters to 6 lessons for track-gnc, edit modal opens via data-testid='admin-edit-l-pid' showing all 6 fields (title/summary/est/blocks/quiz/clip), save (data-testid='admin-edit-save') with new title persists, lesson list refreshes with 'EDITED' badge, revert (data-testid='admin-revert-btn') restores original title (requires accepting window.confirm dialog), close (data-testid='admin-edit-close') discards unsaved changes.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin Revert button", "issues": ["Uses native window.confirm() — fine for UX but means automated tests must accept the dialog. Consider replacing with the existing AlertDialog/shadcn confirm pattern for visual consistency with the rest of the app."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase6_api.py",
+    "/app/test_reports/pytest/pytest_iter6.xml",
+    "/app/test_reports/pytest/pytest_iter6_all.xml"
+  ],
+  "action_items": [
+    "(Optional, low-priority) Replace window.confirm() in /app/frontend/src/pages/Admin.jsx revert() with shadcn AlertDialog for visual consistency.",
+    "(Optional, low-priority) Add data-testid attributes for the dynamically rendered 'Reverted' / '1080 × 1080 card downloaded' toasts so automated tests can poll for them faster; currently they're matched by class-substring."
+  ],
+  "critical_code_review_comments": [
+    "AuthCallback.jsx correctly POSTs with X-Session-ID header (not body), and uses window.history.replaceState to strip session_id from URL after success — good (prevents back-button replay). The 'ran' useRef guard prevents double-submission in React Strict Mode — correct.",
+    "The Google login button uses window.location.href (not <a href>) so the URL is constructed at click-time with current window.location.origin — correctly avoids the hardcoded redirect URL anti-pattern called out in auth_testing.md.",
+    "Admin override pattern (merge db.lesson_overrides on top of seed_data.py) is non-destructive and reversible — clean design. Backend test_admin_update_seed_blocks correctly verifies that blocks override flows through to the public /api/lessons/{id} endpoint.",
+    "PUT /api/admin/lessons/{id} with empty body returns 400 and with unknown id returns 404 — both correct. Auth checks on all admin endpoints return 401 when no Bearer token is supplied — correct.",
+    "/api/studio/calendar.csv now accepts weeks (default 4) and optional trackId filter; default file name 'content_calendar_{N}w.csv' is generated dynamically — clean. Consider also exposing format=ics or a per-platform tag (Reels/Shorts/TikTok) column in a future iteration.",
+    "Studio cards Square/Vertical buttons rendered for all 46 lessons (one pair per card) — perf is fine (no observable jank on the listing page). The Canvas PNG generation is in /app/frontend/src/lib/cardGen.js and is not unit-tested; consider a small snapshot/pixel test if you go down that path.",
+    "Backend test_phase6_api.py::test_admin_lesson_get_and_override_roundtrip correctly reverts the override at the end — good repeatability. Same for test_admin_update_seed_blocks (cleanup via DELETE at the end)."
+  ],
+  "updated_files": [
+    "/app/test_reports/pytest/pytest_iter6.xml (generated — 11 Phase-6 tests)",
+    "/app/test_reports/pytest/pytest_iter6_all.xml (generated — full 83-test regression)",
+    "/app/test_reports/iteration_6.json (this file)"
+  ],
+  "success_rate": {"backend": "100% (83/83 across phases 1-6; 11/11 new Phase 6)", "frontend": "100% — all 7 review-request frontend scenarios verified (Google sign-in/up buttons, redirect URL, JWT login through UI, auth-callback status + redirect branches, Studio weeks selector + CSV link + Square/Vertical card downloads + toasts, Admin search/filter/edit/save/revert/close all working)"},
+  "test_credentials": "Admin: admin@scienceofautonomy.app / autonomy2026 (verified working). No new test users created this iteration.",
+  "seed_data_creation": "None this iteration. The Phase-6 backend tests are fully self-cleaning (override created + reverted in same test).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase-6 backend suite is /app/backend/tests/test_phase6_api.py (11 tests). Run with REACT_APP_BACKEND_URL exported. /api/auth/google-session expects X-Session-ID *header* (not body) — backend will 400 if missing. /api/admin/lessons/{id} PUT accepts partial LessonPatch (title/summary/blocks/quiz/socialClip/estMinutes); empty body → 400. Override revert is via DELETE /api/admin/lessons/{id}/override. Studio CSV: weeks param controls row count (rows = weeks*5 + 1 header), trackId restricts lessons to that track. Frontend gotcha: /admin Revert button uses window.confirm() — Playwright must register `page.on('dialog', lambda d: d.accept())` to actually fire the DELETE. Auth-callback no-session-id branch redirects synchronously after toast.error — capturing the 'Missing Google session' toast in Playwright is racy; the code path (AuthCallback.jsx lines 25-29) is verified correct.",
+  "rca of the issue": "No bugs found in Phase 6. Initial test run mistakenly flagged the Admin revert button as broken — root cause was Playwright auto-dismissing window.confirm() dialogs by default. After registering page.on('dialog', lambda d: d.accept()), the UI revert path works correctly (DELETE /admin/lessons/l-pid/override is called, backend returns {reverted:true}, list refreshes to show original 'Meet the PID Controller' title, 'Reverted' toast appears)."
+}

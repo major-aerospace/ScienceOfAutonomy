@@ -9,6 +9,13 @@ export function AuthProvider({ children }) {
   const [ready, setReady] = useState(false);
 
   const refresh = useCallback(async () => {
+    // Skip the bootstrap /me probe if we're on the Google OAuth callback —
+    // AuthCallback will exchange the session_id and set the JWT. Avoids a
+    // 401 race condition that flips us to "logged out" before the exchange completes.
+    if (typeof window !== "undefined" && window.location.pathname === "/auth/callback") {
+      setReady(true);
+      return;
+    }
     // Skip the bootstrap /me probe if we have no token — avoids harmless 401 noise.
     const token = typeof window !== "undefined" ? localStorage.getItem("soa_token") : null;
     if (!token) {

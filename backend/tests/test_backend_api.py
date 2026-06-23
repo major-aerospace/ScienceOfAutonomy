@@ -189,7 +189,24 @@ def test_calendar_csv(s):
     r = s.get(f"{API}/studio/calendar.csv")
     assert r.status_code == 200
     cd = r.headers.get("content-disposition", "")
-    assert "attachment" in cd and "content_calendar.csv" in cd
+    assert "attachment" in cd and "content_calendar" in cd and ".csv" in cd
     text = r.text
-    assert text.startswith("week,day,lessonId,title,hook,coreIdea,takeaway,hashtags")
-    assert "l-pid" in text
+    assert text.startswith("week,day,lessonId,title,trackId,hook,coreIdea,takeaway,hashtags")
+    # Default = 4 weeks × 5 weekdays = 20 rows
+    assert len(text.strip().splitlines()) == 21  # header + 20 rows
+
+
+def test_calendar_csv_weeks_param(s):
+    r = s.get(f"{API}/studio/calendar.csv", params={"weeks": 6})
+    assert r.status_code == 200
+    rows = r.text.strip().splitlines()
+    assert len(rows) == 1 + 30  # header + 6 weeks × 5 days
+
+
+def test_calendar_csv_track_filter(s):
+    r = s.get(f"{API}/studio/calendar.csv", params={"trackId": "track-foundations"})
+    assert r.status_code == 200
+    rows = r.text.strip().splitlines()
+    # Every data row should reference the requested track
+    for row in rows[1:]:
+        assert "track-foundations" in row

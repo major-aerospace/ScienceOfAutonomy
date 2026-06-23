@@ -10,10 +10,11 @@ import csv
 import io
 import uuid
 import logging
+import httpx
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Literal
 
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, Request, Response
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, Request, Response, Header
 from fastapi.responses import StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -103,6 +104,20 @@ class SimScore(BaseModel):
     gates_cleared: int = Field(ge=0)
 
 
+class LessonPatch(BaseModel):
+    """Editable fields for any lesson (seed or custom). All optional."""
+    title: Optional[str] = None
+    summary: Optional[str] = None
+    estMinutes: Optional[int] = None
+    blocks: Optional[List[dict]] = None
+    quiz: Optional[List[dict]] = None
+    socialClip: Optional[dict] = None
+
+
+class GoogleSessionBody(BaseModel):
+    session_id: Optional[str] = None  # accepted in body OR X-Session-ID header
+
+
 # --------------------------------------------------------------------------------------
 # Helpers
 # --------------------------------------------------------------------------------------
@@ -143,11 +158,26 @@ async def _custom_lessons_map():
     return {r["id"]: r for r in rows}
 
 
+async def _apply_override(lesson: dict) -> dict:
+    """Merge any admin override on top of a lesson dict (seed or custom)."""
+    if not lesson:
+        return lesson
+    ov = await db.lesson_overrides.find_one({"id": lesson["id"]}, {"_id": 0})
+    if not ov:
+        return lesson
+    merged = {**lesson}
+    for k in ("title", "summary", "estMinutes", "blocks", "quiz", "socialClip"):
+        if k in ov and ov[k] is not None:
+            merged[k] = ov[k]
+    merged["edited"] = True
+    return merged
+
+
 async def _resolve_lesson(lesson_id: str):
-    if lesson_id in LESSONS:
-        return LESSONS[lesson_id]
-    custom = await db.custom_lessons.find_one({"id": lesson_id}, {"_id": 0})
-    return custom
+    base = LESSONS.get(lesson_id)
+    if base is None:
+        base = await db.custom_lessons.find_one({"id": lesson_id}, {"_id": 0})
+    return await _apply_override(base) if base else None
 
 
 async def _grant_badges(user_id: str):
@@ -224,6 +254,72 @@ async def logout(response: Response):
     return {"ok": True}
 
 
+# Emergent-managed Google Auth.
+# REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH.
+EMERGENT_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
+
+
+@api.post("/auth/google-session")
+async def google_session(
+    body: GoogleSessionBody,
+    response: Response,
+    x_session_id: Optional[str] = Header(default=None, alias="X-Session-ID"),
+):
+    sid = x_session_id or body.session_id
+    if not sid:
+        raise HTTPException(status_code=400, detail="Missing session_id")
+    try:
+        async with httpx.AsyncClient(timeout=10) as hx:
+            r = await hx.get(EMERGENT_SESSION_URL, headers={"X-Session-ID": sid})
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Emergent auth unreachable: {e}")
+    if r.status_code != 200:
+        raise HTTPException(status_code=401, detail="Invalid or expired Google session")
+    payload = r.json() or {}
+    email = (payload.get("email") or "").lower().strip()
+    name = (payload.get("name") or "").strip() or email.split("@")[0]
+    if not email:
+        raise HTTPException(status_code=401, detail="Google session has no email")
+
+    existing = await db.users.find_one({"email": email})
+    if existing:
+        # Link Google to existing account; do not duplicate.
+        providers = existing.get("auth_provider", "password")
+        if "google" not in providers:
+            providers = f"{providers},google" if providers else "google"
+        await db.users.update_one(
+            {"id": existing["id"]},
+            {"$set": {
+                "auth_provider": providers,
+                "google_picture": payload.get("picture", ""),
+                "last_login_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        user_doc = await db.users.find_one({"id": existing["id"]})
+    else:
+        uid = str(uuid.uuid4())
+        user_doc = {
+            "id": uid,
+            "email": email,
+            "name": name,
+            "password_hash": "",  # no password; Google-only account
+            "goal": "curious",
+            "xp": 0,
+            "level": 1,
+            "streak": 0,
+            "badges": [],
+            "role": "user",
+            "auth_provider": "google",
+            "google_picture": payload.get("picture", ""),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.users.insert_one(user_doc)
+
+    token = create_access_token(user_doc["id"], user_doc["email"])
+    set_auth_cookie(response, token)
+    return {"user": public_user(user_doc), "token": token, "isNewUser": existing is None}
+
+
 @api.get("/auth/me")
 async def me(request: Request):
     user = await get_current_user(request, db)
@@ -268,6 +364,7 @@ async def get_track(track_id: str, request: Request):
         rows = await db.progress.find({"user_id": user["id"]}).to_list(2000)
         completed = {r["lesson_id"] for r in rows if r.get("completed")}
     custom_map = await _custom_lessons_map()
+    overrides = {r["id"]: r for r in await db.lesson_overrides.find({}, {"_id": 0}).to_list(5000)}
     modules = []
     for m in track["modules"]:
         # Seed lessons in the module
@@ -281,14 +378,16 @@ async def get_track(track_id: str, request: Request):
             l = LESSONS.get(lid) or custom_map.get(lid)
             if not l:
                 continue
+            ov = overrides.get(lid, {})
             ls.append({
                 "id": l["id"],
-                "title": l["title"],
-                "summary": l["summary"],
-                "estMinutes": l.get("estMinutes", 5),
+                "title": ov.get("title") or l["title"],
+                "summary": ov.get("summary") or l["summary"],
+                "estMinutes": ov.get("estMinutes") or l.get("estMinutes", 5),
                 "order": l.get("order", 99),
                 "completed": lid in completed,
                 "custom": lid in custom_map,
+                "edited": lid in overrides,
             })
         ls.sort(key=lambda x: x.get("order", 99))
         modules.append({"id": m["id"], "order": m["order"], "title": m["title"], "lessons": ls})
@@ -541,24 +640,28 @@ async def list_social_clips():
 
 
 @api.get("/studio/calendar.csv")
-async def calendar_csv():
+async def calendar_csv(weeks: int = 4, trackId: Optional[str] = None):
+    weeks = max(1, min(weeks, 12))
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(["week", "day", "lessonId", "title", "hook", "coreIdea", "takeaway", "hashtags"])
-    lessons = all_lessons_list()
+    w.writerow(["week", "day", "lessonId", "title", "trackId", "hook", "coreIdea", "takeaway", "hashtags"])
+    pool = [l for l in all_lessons_list() if (not trackId or l["trackId"] == trackId)]
     days = ["Mon", "Tue", "Wed", "Thu", "Fri"]
-    for i, l in enumerate(lessons):
-        week = (i // 5) + 1
-        day = days[i % 5]
+    target = weeks * len(days)
+    selected = pool[:target] if len(pool) >= target else (pool * ((target // max(1, len(pool))) + 1))[:target]
+    for i, l in enumerate(selected):
+        week = (i // len(days)) + 1
+        day = days[i % len(days)]
         c = l["socialClip"]
         w.writerow([
-            f"W{week}", day, l["id"], l["title"],
+            f"W{week}", day, l["id"], l["title"], l["trackId"],
             c["hook"], c["coreIdea"], c["takeaway"], " ".join(c["hashtags"])
         ])
+    filename = f"content_calendar_{weeks}w{('_' + trackId) if trackId else ''}.csv"
     return StreamingResponse(
         iter([buf.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=content_calendar.csv"},
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
@@ -800,7 +903,101 @@ async def delete_custom_lesson(lesson_id: str, request: Request):
     if lesson_id in LESSONS:
         raise HTTPException(400, "Cannot delete a seed lesson")
     await db.custom_lessons.delete_one({"id": lesson_id})
+    await db.lesson_overrides.delete_one({"id": lesson_id})
     return {"ok": True}
+
+
+@api.get("/admin/all-lessons")
+async def admin_all_lessons(request: Request):
+    """Full curriculum index for the CMS — seed + custom, with edit/origin flags."""
+    user = await get_current_user(request, db)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Admin only")
+    overrides = {r["id"]: r for r in await db.lesson_overrides.find({}, {"_id": 0}).to_list(5000)}
+    customs = {r["id"]: r for r in await db.custom_lessons.find({}, {"_id": 0}).to_list(5000)}
+    items = []
+    for lid, l in LESSONS.items():
+        ov = overrides.get(lid, {})
+        items.append({
+            "id": l["id"],
+            "title": ov.get("title") or l["title"],
+            "summary": ov.get("summary") or l["summary"],
+            "trackId": l["trackId"],
+            "moduleId": l["moduleId"],
+            "estMinutes": ov.get("estMinutes") or l.get("estMinutes", 5),
+            "origin": "seed",
+            "edited": lid in overrides,
+        })
+    for lid, l in customs.items():
+        ov = overrides.get(lid, {})
+        items.append({
+            "id": l["id"],
+            "title": ov.get("title") or l["title"],
+            "summary": ov.get("summary") or l["summary"],
+            "trackId": l["trackId"],
+            "moduleId": l["moduleId"],
+            "estMinutes": ov.get("estMinutes") or l.get("estMinutes", 5),
+            "origin": "custom",
+            "edited": lid in overrides,
+        })
+    items.sort(key=lambda x: (x["trackId"], x["moduleId"], x["id"]))
+    return {"lessons": items, "total": len(items)}
+
+
+@api.get("/admin/lessons/{lesson_id}")
+async def admin_get_lesson(lesson_id: str, request: Request):
+    """Returns the FULL editable lesson (seed + override OR custom + override merged)."""
+    user = await get_current_user(request, db)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Admin only")
+    l = await _resolve_lesson(lesson_id)
+    if not l:
+        raise HTTPException(404, "Lesson not found")
+    origin = "seed" if lesson_id in LESSONS else "custom"
+    return {"lesson": l, "origin": origin}
+
+
+@api.put("/admin/lessons/{lesson_id}")
+async def admin_update_lesson(lesson_id: str, body: LessonPatch, request: Request):
+    """Edit any lesson. Seed lessons → overrides collection. Custom → in place."""
+    user = await get_current_user(request, db)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Admin only")
+
+    patch = {k: v for k, v in body.dict(exclude_unset=True).items() if v is not None}
+    if not patch:
+        raise HTTPException(400, "No fields to update")
+
+    is_seed = lesson_id in LESSONS
+    is_custom = await db.custom_lessons.find_one({"id": lesson_id}, {"_id": 0}) is not None
+    if not (is_seed or is_custom):
+        raise HTTPException(404, "Lesson not found")
+
+    if is_seed:
+        patch["id"] = lesson_id
+        patch["updated_at"] = datetime.now(timezone.utc).isoformat()
+        patch["updated_by"] = user["id"]
+        await db.lesson_overrides.update_one(
+            {"id": lesson_id},
+            {"$set": patch},
+            upsert=True,
+        )
+    else:
+        patch["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await db.custom_lessons.update_one({"id": lesson_id}, {"$set": patch})
+
+    merged = await _resolve_lesson(lesson_id)
+    return {"lesson": merged, "origin": "seed" if is_seed else "custom"}
+
+
+@api.delete("/admin/lessons/{lesson_id}/override")
+async def admin_revert_lesson(lesson_id: str, request: Request):
+    """Revert a seed lesson back to its original content by deleting its override."""
+    user = await get_current_user(request, db)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Admin only")
+    res = await db.lesson_overrides.delete_one({"id": lesson_id})
+    return {"reverted": res.deleted_count > 0}
 
 
 # --------------------------------------------------------------------------------------
@@ -944,6 +1141,7 @@ async def on_startup():
     await db.assessments.create_index("user_id")
     await db.reviews.create_index([("user_id", 1), ("next_review_at", 1)])
     await db.custom_lessons.create_index("id", unique=True)
+    await db.lesson_overrides.create_index("id", unique=True)
     await db.comments.create_index([("lesson_id", 1), ("created_at", -1)])
     await db.sim_runs.create_index([("user_id", 1), ("mission", 1), ("time_sec", 1)])
     # seed admin

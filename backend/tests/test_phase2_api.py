@@ -154,9 +154,13 @@ def test_social_clips_37_plus(s):
     assert len(clips) >= 37, f"Expected ≥37 clips, got {len(clips)}"
 
 
-def test_calendar_csv_has_37_rows(s):
+def test_calendar_csv_default_4_weeks(s):
+    """Default calendar is now a 4-week (20 row) posting plan."""
     r = s.get(f"{API}/studio/calendar.csv")
     assert r.status_code == 200
     body = r.text.strip().splitlines()
-    # header + rows
-    assert len(body) - 1 >= 37, f"Expected ≥37 CSV rows, got {len(body)-1}"
+    assert len(body) - 1 == 20
+    # Bumping weeks param expands the plan
+    r2 = s.get(f"{API}/studio/calendar.csv", params={"weeks": 8})
+    assert r2.status_code == 200
+    assert len(r2.text.strip().splitlines()) - 1 == 40
