@@ -31,8 +31,16 @@ export default function Assessment() {
   const submit = async () => {
     // Trainability slope = improvement: 1 if t2 < t1 (faster) by 30%+, scaled
     const slope = t1 > 0 ? Math.max(-0.5, Math.min(1, (t1 - t2) / t1)) : 0;
-    // Defaults for skipped domains (lite version uses 3 mini-tasks)
-    const psych = 0.6; // placeholder
+    // Pull psychomotor from real simulator runs if the user has any.
+    let psych = 0.6;
+    let simDetails = null;
+    try {
+      const { data } = await api.get("/sim/psychomotor");
+      if (data && data.missions_completed > 0) {
+        psych = Math.max(0.1, data.score);
+        simDetails = data;
+      }
+    } catch {}
     const higher = 0.55;
     const dispo = 0.7;
 
@@ -46,15 +54,14 @@ export default function Assessment() {
     };
 
     if (!user || user === false) {
-      // Local-only result
-      setResult({ payload, recommendedTrack: { trackId: "track-foundations", title: "Foundations of Flight & Autonomy", reason: "Start with foundations.", weakestDomain: "perceptual_spatial" } });
+      setResult({ payload, simDetails, recommendedTrack: { trackId: "track-foundations", title: "Foundations of Flight & Autonomy", reason: "Start with foundations.", weakestDomain: "perceptual_spatial" } });
       setStage("result");
       return;
     }
     setSubmitting(true);
     try {
       const { data } = await api.post("/assessment/submit", payload);
-      setResult({ payload, recommendedTrack: data.recommendedTrack });
+      setResult({ payload, simDetails, recommendedTrack: data.recommendedTrack });
       setStage("result");
     } catch (e) {
       toast.error("Could not save assessment");
@@ -162,6 +169,23 @@ function Result({ result }) {
           <div className="text-sm text-[rgb(var(--soa-ink-2))] mt-1">{result.recommendedTrack.reason}</div>
           <Link to={`/tracks/${result.recommendedTrack.trackId}`} className="soa-btn-primary mt-4 inline-flex">Open track</Link>
         </div>
+
+        {result.simDetails && result.simDetails.missions_completed > 0 && (
+          <div className="soa-card p-5 mt-3" data-testid="psychomotor-from-sim">
+            <div className="soa-mono text-[10px] tracking-widest text-[#0047FF]">PSYCHOMOTOR · FROM SIMULATOR</div>
+            <div className="text-sm mt-1">
+              {result.simDetails.missions_completed} mission{result.simDetails.missions_completed > 1 ? "s" : ""} completed · score {(result.simDetails.score * 100).toFixed(0)}%
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
+              {result.simDetails.details.map((d) => (
+                <div key={d.mission} className="border border-[rgb(var(--soa-line))] p-2 rounded-sm">
+                  <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">{d.mission.toUpperCase()}</div>
+                  <div className="soa-mono text-sm font-bold mt-1">{d.best.toFixed(2)}s</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <button data-testid={TID.assessRetake} onClick={() => window.location.reload()} className="soa-btn-ghost mt-4">Retake</button>
       </div>

@@ -1,0 +1,44 @@
+{
+  "summary": "Phase 5 (Mission catalog + Psychomotor wiring) — FULL PASS. Backend: 12/12 new Phase-5 tests green; 70/70 across phases 1-5. /api/sim/missions returns all 4 missions (gate-course-1, precision-hover, pylon-slalom, no-gps-landing) with name/gates/min_time/max_time. /api/sim/score correctly enforces per-mission gate requirements: precision-hover needs 1 gate (0 -> 400), pylon-slalom needs 6 gates (5 -> 400, 6 -> 200), no-gps-landing needs 1 gate AND time_sec >= 5 (3.0s -> 400, 20.0s -> 200). /api/sim/best?mission= and /api/sim/leaderboard?mission= are correctly mission-scoped (user_a leads pylon-slalom @30.0s, has 12.0s on precision-hover, user_b only on pylon-slalom). /api/sim/psychomotor returns score=0/missions_completed=0/details=[] for fresh user; after posting a 30s gate-course-1 run, score climbs to ~0.69 (>0.5) with mission detail. Regression: /api/, /api/tracks, /api/lessons/l-pid still green. Frontend (Playwright @ 1920x1080 on /simulator): all 4 mission chips (data-testid='mission-gate-course-1','mission-precision-hover','mission-pylon-slalom','mission-no-gps-landing') present and clickable. Clicking each updates headline ('Gate Course' -> 'Precision Hover' -> 'Pylon Slalom' -> 'No-GPS Landing') AND HUD label kind: gates -> data-testid='hud-gates'; hover -> data-testid='hud-hold' (and hud-gates disappears); landing -> data-testid='hud-objective' showing 'LAND ON PAD'. 3D canvas renders for all 4 missions without console errors. Pressing START hides the 'Take off' overlay and the TIME tile starts ticking (observed 0.00 -> 2.60s after 2.5s). Assessment page (/assessment) loads cleanly with intro 3-card layout (Mental rotation, Vigilance, Trainability) and Begin button; the simDetails fetch code path is wired in Assessment.jsx::submit() -> GET /sim/psychomotor and conditionally renders the 'PSYCHOMOTOR · FROM SIMULATOR' card with mission/best chips when missions_completed>0 (code verified; full quiz E2E not run).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Simulator headline", "issues": ["The descriptive line for Precision Hover ('Stay inside the blue zone for Xs. Wind will push you.') only renders when missionId === 'precision-hover'; for No-GPS Landing the description is undefined (left blank). Consider always providing a one-line mission brief for consistency."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase5_api.py",
+    "/app/test_reports/pytest/pytest_iter5.xml",
+    "/app/test_reports/pytest/pytest_iter5_all.xml"
+  ],
+  "action_items": [
+    "(Optional) Provide mission brief copy for ALL 4 missions in Simulator.jsx (currently only gate-course-1 + precision-hover have description strings; pylon-slalom & no-gps-landing fall through to undefined).",
+    "(Test maintenance, already applied) Updated /app/backend/tests/test_phase4_api.py::test_sim_leaderboard_sorted_ascending — user_b's gates_cleared 4 -> 5 to satisfy Phase-5 anti-cheat (gate-course-1 requires 5 gates)."
+  ],
+  "critical_code_review_comments": [
+    "Phase-5 anti-cheat is correctly enforced server-side: gates_cleared < cfg.gates -> 400, time_sec < cfg.min_time -> 400. Good. Recommend adding an explicit upper bound on time_sec (e.g. <= 3600s) to prevent obvious bad data.",
+    "/api/sim/score returns best.time_sec = min(body.time_sec, prev_best_time) when prev_best is present — correct, but on a slower run the returned 'best' is missing the 'mission' field (because it's constructed inline rather than re-queried). Frontend uses /api/sim/best for the HUD's PERSONAL BEST so this is cosmetic, but consider returning the full best doc for consistency.",
+    "/api/sim/psychomotor breadth bonus 0.025*n caps at 0.1 when n>=4 — correct, and n is capped to 4 since only 4 missions exist. No fix needed; consider documenting the formula in the response.",
+    "Assessment.jsx::submit clamps psych = max(0.1, data.score) — that floor of 0.1 means even a user who barely cleared the slowest run (score≈0) gets 0.1 on the radar. Intentional to keep the polygon non-degenerate, but worth a brief comment in code.",
+    "Simulator.jsx::descriptions only has entries for 'gate-course-1' and 'precision-hover' (lines ~410-414). The other two missions render an empty <p>. Add brief copy for pylon-slalom and no-gps-landing.",
+    "MISSIONS_CONFIG is duplicated between backend (server.py) and frontend (Simulator.jsx MISSIONS). Gates/min_time/max_time on backend must stay in sync with frontend gates array length and physics. Consider exposing a derived shape from /api/sim/missions and consuming it client-side."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase5_api.py (new — 12 Phase 5 tests covering /api/sim/missions, per-mission gate validation, /api/sim/psychomotor, regression)",
+    "/app/backend/tests/test_phase4_api.py (1-line fix: gates_cleared 4 -> 5 to satisfy Phase-5 anti-cheat)",
+    "/app/test_reports/pytest/pytest_iter5.xml (generated — 12 Phase-5 tests)",
+    "/app/test_reports/pytest/pytest_iter5_all.xml (generated — full 70-test regression)"
+  ],
+  "success_rate": {"backend": "100% (70/70 across phases 1-5; 12/12 new Phase 5)", "frontend": "100% of requested Phase-5 simulator flows verified (19/19 Playwright checks); Assessment intro+wiring verified, full quiz E2E not executed"},
+  "test_credentials": "Admin: admin@scienceofautonomy.app / autonomy2026. Phase-5 ad-hoc users TEST_p5a_*/TEST_p5b_*/TEST_p5fresh_* registered with password TestPass123!.",
+  "seed_data_creation": "Three new TEST_ users registered. user_a posted: precision-hover 12.0s/1gate, pylon-slalom 30.0s/6gates, no-gps-landing 20.0s/1gate. user_b posted: pylon-slalom 50.0s/6gates. user_fresh posted: gate-course-1 30.0s/5gates. user_a now leads pylon-slalom (30.0s).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase-5 backend suite is /app/backend/tests/test_phase5_api.py (12 tests). Test data uses TEST_p5*_ prefix. The 4 mission ids are 'gate-course-1','precision-hover','pylon-slalom','no-gps-landing' — keep these in sync with MISSIONS_CONFIG in server.py and MISSIONS in Simulator.jsx. /api/sim/score now enforces gates_cleared >= cfg.gates (anti-cheat) — any earlier test posting < required gates will now 400; phase4 test was updated accordingly. HUD testids per mission.kind: gates -> hud-gates, hover -> hud-hold, landing -> hud-objective. The Assessment 'PSYCHOMOTOR · FROM SIMULATOR' card (data-testid='psychomotor-from-sim') is only rendered when simDetails.missions_completed > 0 AND user reached the result stage — to E2E the radar reflecting sim psychomotor, you'd need to walk through MentalRotation + Vigilance + 2×Trainability tasks while logged in as a user with sim runs.",
+  "rca of the issue": "No bugs found in Phase 5. The Phase-4 test that became outdated under the new anti-cheat rule was updated (gates_cleared 4 -> 5). All 70 backend tests now pass and all 19 frontend Phase-5 checks pass."
+}

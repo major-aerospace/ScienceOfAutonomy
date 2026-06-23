@@ -137,7 +137,7 @@ def test_sim_best_null_for_fresh_user(s, user_b):
 def test_sim_leaderboard_sorted_ascending(s, user_a, user_b):
     # User B posts a slower run
     rb = s.post(f"{API}/sim/score", headers=hdr(user_b), json={
-        "mission": "gate-course-1", "time_sec": 75.0, "gates_cleared": 4,
+        "mission": "gate-course-1", "time_sec": 75.0, "gates_cleared": 5,
     })
     assert rb.status_code == 200
 

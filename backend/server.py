@@ -806,19 +806,29 @@ async def delete_custom_lesson(lesson_id: str, request: Request):
 # --------------------------------------------------------------------------------------
 # Simulator runs (also feeds the Psychomotor assessment domain)
 # --------------------------------------------------------------------------------------
-MISSION_GATES = {"gate-course-1": 5}
+MISSIONS_CONFIG = {
+    "gate-course-1": {"name": "Gate Course", "gates": 5, "min_time": 5.0, "max_time": 90.0},
+    "precision-hover": {"name": "Precision Hover", "gates": 1, "min_time": 8.0, "max_time": 60.0},
+    "pylon-slalom": {"name": "Pylon Slalom", "gates": 6, "min_time": 6.0, "max_time": 75.0},
+    "no-gps-landing": {"name": "No-GPS Landing", "gates": 1, "min_time": 5.0, "max_time": 60.0},
+}
+MISSION_GATES = {k: v["gates"] for k, v in MISSIONS_CONFIG.items()}
+
+
+@api.get("/sim/missions")
+async def sim_missions():
+    return {"missions": [{"id": k, **v} for k, v in MISSIONS_CONFIG.items()]}
 
 
 @api.post("/sim/score")
 async def sim_score(body: SimScore, request: Request):
     user = await get_current_user(request, db)
-    # Anti-cheat: require the configured number of gates, and a sane minimum time.
-    required = MISSION_GATES.get(body.mission)
-    if required is None:
+    cfg = MISSIONS_CONFIG.get(body.mission)
+    if not cfg:
         raise HTTPException(400, "Unknown mission")
-    if body.gates_cleared < required:
-        raise HTTPException(400, f"Run incomplete: {body.gates_cleared}/{required} gates")
-    if body.time_sec < 5.0:
+    if body.gates_cleared < cfg["gates"]:
+        raise HTTPException(400, f"Run incomplete: {body.gates_cleared}/{cfg['gates']} gates")
+    if body.time_sec < cfg["min_time"]:
         raise HTTPException(400, "Implausibly fast run rejected")
     doc = {
         "id": str(uuid.uuid4()),
@@ -840,7 +850,10 @@ async def sim_score(body: SimScore, request: Request):
     is_new_best = (prev_best_time is None) or (body.time_sec < prev_best_time)
     awarded = 0
     if is_new_best:
-        awarded = max(10, int(120 - min(body.time_sec, 110)))  # faster = more XP
+        # XP scales with how fast vs the mission's max_time
+        max_t = cfg["max_time"]
+        ratio = max(0.0, min(1.0, (max_t - body.time_sec) / max_t))
+        awarded = max(10, int(20 + ratio * 100))
         await db.users.update_one(
             {"id": user["id"]},
             {"$inc": {"xp": awarded}},
@@ -854,6 +867,44 @@ async def sim_score(body: SimScore, request: Request):
         "xpAwarded": awarded,
         "best": {"time_sec": min(body.time_sec, prev_best_time) if prev_best_time else body.time_sec},
     }
+
+
+@api.get("/sim/psychomotor")
+async def sim_psychomotor(request: Request):
+    """Aggregate the user's sim performance into a normalized psychomotor score (0..1).
+
+    For each mission the user has completed, score = clip((max_time - best) / max_time, 0..1).
+    Final = mean across missions completed, with a small bonus for breadth (more missions = more confidence).
+    Returns 0 if no runs.
+    """
+    user = await get_current_user(request, db)
+    rows = await db.sim_runs.find(
+        {"user_id": user["id"]},
+        {"_id": 0, "mission": 1, "time_sec": 1},
+    ).to_list(2000)
+    if not rows:
+        return {"score": 0.0, "missions_completed": 0, "details": []}
+    bests = {}
+    for r in rows:
+        m = r["mission"]
+        if m not in bests or r["time_sec"] < bests[m]:
+            bests[m] = r["time_sec"]
+    details = []
+    total = 0.0
+    n = 0
+    for m, t in bests.items():
+        cfg = MISSIONS_CONFIG.get(m)
+        if not cfg:
+            continue
+        s = max(0.0, min(1.0, (cfg["max_time"] - t) / cfg["max_time"]))
+        details.append({"mission": m, "best": t, "score": round(s, 3)})
+        total += s
+        n += 1
+    base = (total / n) if n else 0.0
+    # Breadth bonus: up to +0.1 if you've completed all 4 missions
+    breadth = min(0.1, 0.025 * n)
+    final = max(0.0, min(1.0, base + breadth))
+    return {"score": round(final, 3), "missions_completed": n, "details": details}
 
 
 @api.get("/sim/best")

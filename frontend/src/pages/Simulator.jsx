@@ -7,31 +7,61 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { Play, RotateCcw, Trophy } from "lucide-react";
 
-const MISSION = {
-  id: "gate-course-1",
-  name: "Gate Course · 01",
-  // Each gate = { pos: [x,y,z], rot: yaw radians }
-  gates: [
-    { pos: [0, 1.6, -10], rot: 0 },
-    { pos: [6, 2.4, -22], rot: -0.4 },
-    { pos: [-4, 1.2, -36], rot: 0.5 },
-    { pos: [4, 3.0, -52], rot: -0.3 },
-    { pos: [0, 1.8, -68], rot: 0 },
-  ],
+const MISSIONS = {
+  "gate-course-1": {
+    name: "Gate Course",
+    kind: "gates",
+    gates: [
+      { pos: [0, 1.6, -10], rot: 0 },
+      { pos: [6, 2.4, -22], rot: -0.4 },
+      { pos: [-4, 1.2, -36], rot: 0.5 },
+      { pos: [4, 3.0, -52], rot: -0.3 },
+      { pos: [0, 1.8, -68], rot: 0 },
+    ],
+    physics: { wind: 0, gpsDrift: 0 },
+  },
+  "precision-hover": {
+    name: "Precision Hover",
+    kind: "hover",
+    target: { pos: [0, 2.4, -10], r: 0.7 },
+    holdSeconds: 8,
+    physics: { wind: 0.6, gpsDrift: 0 },
+  },
+  "pylon-slalom": {
+    name: "Pylon Slalom",
+    kind: "gates",
+    gates: [
+      { pos: [3, 1.6, -8], rot: 0 },
+      { pos: [-3, 1.6, -16], rot: 0 },
+      { pos: [3, 1.6, -24], rot: 0 },
+      { pos: [-3, 1.6, -32], rot: 0 },
+      { pos: [3, 1.6, -40], rot: 0 },
+      { pos: [0, 1.6, -50], rot: 0 },
+    ],
+    physics: { wind: 1.4, gpsDrift: 0 },
+  },
+  "no-gps-landing": {
+    name: "No-GPS Landing",
+    kind: "landing",
+    pad: { pos: [4, 0.05, -22], r: 1.6 },
+    physics: { wind: 0.4, gpsDrift: 0.6 },
+  },
 };
+const MISSION_LIST = Object.keys(MISSIONS);
 
 function isTouch() {
   return typeof window !== "undefined" && (("ontouchstart" in window) || navigator.maxTouchPoints > 0);
 }
 
 /* -------------------- 3D MODE -------------------- */
-function Drone({ onState }) {
+function Drone({ onState, physics }) {
   const droneRef = useRef();
   const stateRef = useRef({
     x: 0, y: 1.4, z: 0,
     vx: 0, vy: 0, vz: 0,
     yaw: 0, pitch: 0,
     keys: {},
+    windPhase: 0,
   });
 
   useEffect(() => {
@@ -47,22 +77,31 @@ function Drone({ onState }) {
   useFrame((_, dt) => {
     const s = stateRef.current;
     const k = s.keys;
-    // Throttle
+    s.windPhase += dt;
     const thrust = (k["Space"] ? 6 : 0) - (k["ShiftLeft"] || k["ShiftRight"] ? 4 : 0);
-    // Yaw left/right
     const yawIn = (k["KeyA"] ? 1 : 0) - (k["KeyD"] ? 1 : 0);
     s.yaw += yawIn * dt * 1.6;
-    // Forward/back (in drone's facing direction)
     const fwd = (k["KeyW"] ? 1 : 0) - (k["KeyS"] ? 1 : 0);
-    // Strafe
     const strafe = (k["KeyQ"] ? 1 : 0) - (k["KeyE"] ? 1 : 0);
 
     const accel = 10;
     s.vx += (-Math.sin(s.yaw) * fwd - Math.cos(s.yaw) * strafe) * accel * dt;
     s.vz += (-Math.cos(s.yaw) * fwd + Math.sin(s.yaw) * strafe) * accel * dt;
-    s.vy += (thrust - 4.8) * dt; // gravity-ish
+    s.vy += (thrust - 4.8) * dt;
 
-    // Drag
+    // Mission physics: wind buffeting + GPS drift (slow random sway in observed pos)
+    const wind = physics?.wind || 0;
+    if (wind > 0) {
+      s.vx += Math.sin(s.windPhase * 1.7) * wind * dt * 1.4;
+      s.vz += Math.cos(s.windPhase * 1.3 + 1.1) * wind * dt * 1.0;
+    }
+    const gpsDrift = physics?.gpsDrift || 0;
+    if (gpsDrift > 0) {
+      // Inject a slow biased drift to position (the visible drone wobbles around the truth)
+      s.x += Math.sin(s.windPhase * 0.6) * gpsDrift * dt * 0.6;
+      s.z += Math.cos(s.windPhase * 0.5) * gpsDrift * dt * 0.6;
+    }
+
     const drag = 0.94;
     s.vx *= drag; s.vy *= 0.97; s.vz *= drag;
 
@@ -74,7 +113,6 @@ function Drone({ onState }) {
       droneRef.current.rotation.set(0, s.yaw, 0);
     }
 
-    // Chase camera
     const camDist = 4.0, camHeight = 1.2;
     const targetCamX = s.x + Math.sin(s.yaw) * camDist;
     const targetCamZ = s.z + Math.cos(s.yaw) * camDist;
@@ -146,7 +184,14 @@ function SkyDome() {
   );
 }
 
-function Sim3D({ onTick, onGate, onFinish, gatesCleared }) {
+function Pad({ pos, r }) {
+  return h("group", { position: pos },
+    h("mesh", { rotation: [-Math.PI / 2, 0, 0] }, h("circleGeometry", { args: [r, 32] }), h("meshStandardMaterial", { color: "#0047FF", emissive: "#0047FF", emissiveIntensity: 0.5 })),
+    h("mesh", { rotation: [-Math.PI / 2, 0, 0], position: [0, 0.01, 0] }, h("ringGeometry", { args: [r * 0.8, r, 32] }), h("meshBasicMaterial", { color: "#fff" }))
+  );
+}
+
+function Sim3D({ mission, onTick, onGate, onFinish, gatesCleared, holdProgress }) {
   return (
     <Canvas camera={{ position: [0, 2.4, 4], fov: 70 }} dpr={[1, 2]} style={{ background: "#04060A" }}>
       <Suspense fallback={null}>
@@ -156,28 +201,59 @@ function Sim3D({ onTick, onGate, onFinish, gatesCleared }) {
         {h("directionalLight", { position: [-5, 4, -8], intensity: 0.45, color: "#5A8CFF" })}
         {h(GridFloor)}
         {h(Ground)}
-        {MISSION.gates.map((g, i) => h(Gate, { key: i, pos: g.pos, rot: g.rot, cleared: gatesCleared > i, next: gatesCleared === i }))}
-        {h(Drone, { onState: (s) => { onTick(s); checkGate(s, gatesCleared, onGate, onFinish); } })}
+        {mission.kind === "gates" && mission.gates.map((g, i) =>
+          h(Gate, { key: i, pos: g.pos, rot: g.rot, cleared: gatesCleared > i, next: gatesCleared === i }))}
+        {mission.kind === "hover" && h(Gate, { pos: mission.target.pos, rot: 0, cleared: holdProgress >= 1, next: holdProgress < 1 })}
+        {mission.kind === "landing" && h(Pad, { pos: mission.pad.pos, r: mission.pad.r })}
+        {h(Drone, {
+          physics: mission.physics,
+          onState: (s) => { onTick(s); checkObjective(s, mission, gatesCleared, onGate, onFinish); }
+        })}
       </Suspense>
     </Canvas>
   );
 }
 
-function checkGate(s, gatesCleared, onGate, onFinish) {
-  if (gatesCleared >= MISSION.gates.length) return;
-  const g = MISSION.gates[gatesCleared];
-  const dx = s.x - g.pos[0], dy = s.y - g.pos[1], dz = s.z - g.pos[2];
-  const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-  if (dist < 1.3) {
-    if (gatesCleared + 1 >= MISSION.gates.length) onFinish();
-    else onGate();
+function checkObjective(s, mission, gatesCleared, onGate, onFinish) {
+  if (mission.kind === "gates") {
+    if (gatesCleared >= mission.gates.length) return;
+    const g = mission.gates[gatesCleared];
+    const dx = s.x - g.pos[0], dy = s.y - g.pos[1], dz = s.z - g.pos[2];
+    if (Math.sqrt(dx * dx + dy * dy + dz * dz) < 1.3) {
+      if (gatesCleared + 1 >= mission.gates.length) onFinish();
+      else onGate();
+    }
+  } else if (mission.kind === "hover") {
+    const t = mission.target;
+    const dx = s.x - t.pos[0], dy = s.y - t.pos[1], dz = s.z - t.pos[2];
+    const inside = Math.sqrt(dx * dx + dy * dy + dz * dz) < t.r;
+    onGate(inside ? "in" : "out");
+  } else if (mission.kind === "landing") {
+    const p = mission.pad;
+    const dx = s.x - p.pos[0], dz = s.z - p.pos[2];
+    if (Math.sqrt(dx * dx + dz * dz) < p.r && s.y <= 0.45 && Math.abs(s.vy) < 1.5) {
+      onFinish();
+    }
   }
 }
 
 /* -------------------- ARCADE 2D MODE -------------------- */
-function ArcadeSim({ onTick, onGate, onFinish, gatesCleared }) {
+function ArcadeSim({ mission, onTick, onGate, onFinish, gatesCleared }) {
   const canvasRef = useRef();
   const stateRef = useRef({ x: 250, y: 380, vx: 0, vy: 0, keys: {} });
+
+  // Map mission gates to 2D arcade coords (or use defaults for non-gate missions)
+  const gates2d = useMemo(() => {
+    if (mission.kind === "gates") {
+      // Map each 3D gate's (x,z) into a 500x420 canvas
+      return mission.gates.map((g, i) => ({
+        x: 250 + g.pos[0] * 18,
+        y: 380 - i * (340 / Math.max(1, mission.gates.length)),
+      }));
+    }
+    if (mission.kind === "hover") return [{ x: 250, y: 200 }];
+    return [{ x: 380, y: 80 }]; // landing pad target
+  }, [mission]);
 
   useEffect(() => {
     const dn = (e) => { stateRef.current.keys[e.code] = true; e.preventDefault?.(); };
@@ -199,9 +275,6 @@ function ArcadeSim({ onTick, onGate, onFinish, gatesCleared }) {
   useEffect(() => {
     const c = canvasRef.current; const ctx = c.getContext("2d");
     const w = c.width = 500, h2 = c.height = 420;
-    const gates2d = [
-      { x: 250, y: 320 }, { x: 380, y: 240 }, { x: 120, y: 180 }, { x: 340, y: 120 }, { x: 250, y: 40 },
-    ];
     let raf;
     let lastT = performance.now();
     const tick = () => {
@@ -242,7 +315,7 @@ function ArcadeSim({ onTick, onGate, onFinish, gatesCleared }) {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [gatesCleared, onGate, onFinish, onTick]);
+  }, [gatesCleared, onGate, onFinish, onTick, gates2d]);
 
   return (
     <canvas
@@ -260,10 +333,14 @@ function ArcadeSim({ onTick, onGate, onFinish, gatesCleared }) {
 export default function Simulator() {
   const { user, refresh } = useAuth();
   const [mode, setMode] = useState(() => (isTouch() ? "arcade" : "3d"));
+  const [missionId, setMissionId] = useState("gate-course-1");
+  const mission = MISSIONS[missionId];
   const [running, setRunning] = useState(false);
   const [startTs, setStartTs] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [gatesCleared, setGatesCleared] = useState(0);
+  const [holdTime, setHoldTime] = useState(0); // seconds inside hover zone
+  const lastInsideRef = useRef(0);
   const [last, setLast] = useState(null);
   const [best, setBest] = useState(null);
   const [speed, setSpeed] = useState(0);
@@ -276,21 +353,45 @@ export default function Simulator() {
 
   useEffect(() => {
     if (!user || user === false) return;
-    api.get("/sim/best").then(({ data }) => setBest(data.best || null)).catch(() => {});
-  }, [user]);
+    api.get(`/sim/best?mission=${missionId}`).then(({ data }) => setBest(data.best || null)).catch(() => {});
+  }, [user, missionId]);
+
+  // Hover tracking
+  const onHover = (state) => {
+    if (mission.kind !== "hover" || !running) return;
+    const now = performance.now();
+    if (state === "in") {
+      const dt = (now - (lastInsideRef.current || now)) / 1000;
+      lastInsideRef.current = now;
+      setHoldTime((t) => {
+        const next = Math.min(mission.holdSeconds, t + (dt > 0.3 ? 0 : dt));
+        if (next >= mission.holdSeconds) finish();
+        return next;
+      });
+    } else {
+      lastInsideRef.current = now;
+    }
+  };
 
   const begin = () => {
-    setRunning(true); setGatesCleared(0); setStartTs(performance.now()); setElapsed(0); setLast(null);
+    setRunning(true); setGatesCleared(0); setHoldTime(0); setStartTs(performance.now()); setElapsed(0); setLast(null);
+    lastInsideRef.current = 0;
   };
   const finish = async () => {
+    if (!running) return;
     const t = (performance.now() - startTs) / 1000;
-    setRunning(false); setLast(t); setElapsed(t); setGatesCleared(MISSION.gates.length);
+    setRunning(false); setLast(t); setElapsed(t);
+    if (mission.kind === "gates") setGatesCleared(mission.gates.length);
     if (!user || user === false) {
       toast(`Time ${t.toFixed(2)}s — sign in to save your best.`);
       return;
     }
     try {
-      const { data } = await api.post("/sim/score", { mission: MISSION.id, time_sec: t, gates_cleared: MISSION.gates.length });
+      const { data } = await api.post("/sim/score", {
+        mission: missionId,
+        time_sec: t,
+        gates_cleared: mission.kind === "gates" ? mission.gates.length : 1,
+      });
       if (data?.is_new_best) {
         toast.success(`New best · ${t.toFixed(2)}s · +${data.xpAwarded || 0} XP`);
         setBest({ time_sec: t });
@@ -298,21 +399,27 @@ export default function Simulator() {
         toast(`Run complete · ${t.toFixed(2)}s · best ${data?.best?.time_sec?.toFixed(2)}s`);
       }
       await refresh();
-    } catch { toast.error("Could not save run"); }
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Could not save run");
+    }
   };
-  const reset = () => { setRunning(false); setGatesCleared(0); setLast(null); setElapsed(0); };
+  const reset = () => { setRunning(false); setGatesCleared(0); setHoldTime(0); setLast(null); setElapsed(0); };
+
+  const holdProgress = mission.kind === "hover" ? holdTime / mission.holdSeconds : 0;
+  const hint = {
+    "gate-course-1": "WASD to fly. Space throttle. Shift down. Q/E strafe.",
+    "precision-hover": `Stay inside the blue zone for ${mission.holdSeconds}s. Wind will push you.`,
+    "pylon-slalom": "Weave through alternating gates. Strong wind crosswise.",
+    "no-gps-landing": "Land on the blue pad. GPS drift makes your position lie.",
+  }[missionId];
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-10">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <div className="soa-mono text-[11px] tracking-widest text-[#0047FF]">SIMULATOR · GATE COURSE</div>
-          <h1 className="soa-display text-3xl md:text-5xl font-black tracking-tighter mt-1">Fly. The. Course.</h1>
-          <p className="text-sm text-[rgb(var(--soa-ink-2))] mt-1 max-w-md">
-            {mode === "3d"
-              ? "WASD to move. Space throttle up. Shift down. Q/E strafe. Fly through the blue gate."
-              : "Arrows or WASD to thrust. Or drag on the canvas. Reach each ring in order."}
-          </p>
+          <div className="soa-mono text-[11px] tracking-widest text-[rgb(var(--soa-primary))]">SIMULATOR · {mission.name.toUpperCase()}</div>
+          <h1 className="soa-display text-3xl md:text-5xl font-black tracking-tighter mt-1">{mission.name}</h1>
+          <p className="text-sm text-[rgb(var(--soa-ink-2))] mt-1 max-w-md">{hint}</p>
         </div>
         <div className="flex gap-2">
           <button data-testid="sim-mode-3d" onClick={() => setMode("3d")} className={`soa-chip ${mode === "3d" ? "soa-chip-primary" : ""}`}>3D</button>
@@ -320,10 +427,26 @@ export default function Simulator() {
         </div>
       </div>
 
+      {/* Mission picker */}
+      <div className="flex flex-wrap gap-2 mt-5">
+        {MISSION_LIST.map((mid) => (
+          <button
+            key={mid}
+            data-testid={`mission-${mid}`}
+            onClick={() => { reset(); setMissionId(mid); }}
+            className={`soa-chip ${missionId === mid ? "soa-chip-primary" : ""}`}
+          >
+            {MISSIONS[mid].name}
+          </button>
+        ))}
+      </div>
+
       {/* HUD */}
       <div className="grid md:grid-cols-4 gap-3 mt-6">
         <HUDStat label="TIME" value={`${elapsed.toFixed(2)}s`} />
-        <HUDStat label="GATES" value={`${gatesCleared} / ${MISSION.gates.length}`} />
+        {mission.kind === "gates" && <HUDStat label="GATES" value={`${gatesCleared} / ${mission.gates.length}`} />}
+        {mission.kind === "hover" && <HUDStat label="HOLD" value={`${holdTime.toFixed(1)} / ${mission.holdSeconds}s`} />}
+        {mission.kind === "landing" && <HUDStat label="OBJECTIVE" value="LAND ON PAD" />}
         <HUDStat label="LAST RUN" value={last != null ? `${last.toFixed(2)}s` : "—"} />
         <HUDStat label="PERSONAL BEST" value={best ? `${best.time_sec.toFixed(2)}s` : "—"} icon={<Trophy className="w-4 h-4 text-[#FFCC00]" />} />
       </div>
@@ -332,8 +455,24 @@ export default function Simulator() {
       <div className="mt-6 soa-panel p-3 pt-6 relative">
         <div className="h-[480px] md:h-[520px] relative" data-testid="sim-stage">
           {mode === "3d"
-            ? <Sim3D onTick={(s) => setSpeed(Math.hypot(s.vx, s.vz))} onGate={() => setGatesCleared((g) => g + 1)} onFinish={finish} gatesCleared={gatesCleared} />
-            : <ArcadeSim onTick={(s) => setSpeed(Math.hypot(s.vx, s.vy) / 100)} onGate={() => setGatesCleared((g) => g + 1)} onFinish={finish} gatesCleared={gatesCleared} />
+            ? <Sim3D
+                mission={mission}
+                onTick={(s) => setSpeed(Math.hypot(s.vx, s.vz))}
+                onGate={(arg) => {
+                  if (mission.kind === "hover") onHover(arg);
+                  else setGatesCleared((g) => g + 1);
+                }}
+                onFinish={finish}
+                gatesCleared={gatesCleared}
+                holdProgress={holdProgress}
+              />
+            : <ArcadeSim
+                mission={mission}
+                onTick={(s) => setSpeed(Math.hypot(s.vx, s.vy) / 100)}
+                onGate={() => setGatesCleared((g) => g + 1)}
+                onFinish={finish}
+                gatesCleared={gatesCleared}
+              />
           }
           {!running && (
             <div className="absolute inset-0 grid place-items-center bg-black/55 pointer-events-none">
