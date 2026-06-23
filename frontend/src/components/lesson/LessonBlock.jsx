@@ -47,8 +47,9 @@ function Widget({ id }) {
   );
 }
 
-function DeepDive({ text }) {
+function DeepDive({ block }) {
   const tier = useTier();
+  const text = block.text;
   const [open, setOpen] = useState(tier === "deep");
   return (
     <div className="bg-white border-[1.5px] border-[rgb(var(--soa-line))] rounded-sm">
@@ -57,7 +58,9 @@ function DeepDive({ text }) {
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center justify-between p-4 text-left"
       >
-        <span className="soa-mono uppercase tracking-widest text-[11px] font-semibold">Deep dive · the math</span>
+        <span className="soa-mono uppercase tracking-widest text-[11px] font-semibold">
+          Deep dive · the math {tier === "deep" && <span className="text-[#0047FF]">· UNLOCKED</span>}
+        </span>
         <ChevronDown className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`} strokeWidth={1.5} />
       </button>
       {open && (
@@ -67,25 +70,49 @@ function DeepDive({ text }) {
   );
 }
 
-function Caption({ text }) {
+function Caption({ block }) {
   const tier = useTier();
-  // ELI12: pre-pend friendly framing on long captions
-  const display = tier === "eli12" && text.length > 60 ? `Like this: ${text}` : text;
+  const variantText = (tier === "eli12" && block.eli12) || (tier === "deep" && block.deep) || null;
+  const text = variantText || block.text;
+  const label =
+    tier === "eli12" ? "EXPLAINED · LIKE I'M 12"
+      : tier === "deep" ? "TECHNICAL CAPTION"
+        : "CAPTION";
+  const labelColor = tier === "eli12" ? "text-[#FFCC00]" : tier === "deep" ? "text-[#0047FF]" : "text-[rgb(var(--soa-ink-3))]";
   return (
-    <div className="text-center max-w-3xl mx-auto py-2">
-      <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">
-        {tier === "eli12" ? "EXPLAINED SIMPLY" : "CAPTION"}
+    <div className="text-center max-w-3xl mx-auto py-2" data-testid={`caption-${tier}`}>
+      <div className={`soa-mono text-[10px] tracking-widest ${labelColor}`}>
+        {label}
+        {!variantText && tier !== "standard" && (
+          <span className="ml-2 opacity-60">· standard text shown</span>
+        )}
       </div>
-      <p className="text-lg md:text-xl text-[rgb(var(--soa-ink))] mt-1">{display}</p>
+      <p className={`mt-1 ${tier === "eli12" ? "text-xl md:text-2xl font-medium" : "text-lg md:text-xl"} text-[rgb(var(--soa-ink))]`}>
+        {text}
+      </p>
     </div>
   );
 }
 
-function Takeaway({ text }) {
+function Takeaway({ block }) {
+  const tier = useTier();
+  const variantText = (tier === "eli12" && block.eli12) || (tier === "deep" && block.deep) || null;
+  const text = variantText || block.text;
+  const accent = tier === "eli12" ? "#FFCC00" : "#0047FF";
+  const label = tier === "eli12" ? "REMEMBER THIS" : tier === "deep" ? "TAKEAWAY · ENGINEERING" : "KEY TAKEAWAY";
   return (
-    <div className="border-l-[3px] border-[#0047FF] bg-[#0047FF]/5 p-5 rounded-sm">
-      <div className="soa-mono text-[10px] tracking-widest text-[#0047FF]">KEY TAKEAWAY</div>
+    <div
+      className="border-l-[3px] p-5 rounded-sm"
+      style={{ borderColor: accent, background: `${accent}0D` }}
+      data-testid={`takeaway-${tier}`}
+    >
+      <div className="soa-mono text-[10px] tracking-widest" style={{ color: accent }}>{label}</div>
       <div className="soa-display text-2xl font-black mt-1">{text}</div>
+      {!variantText && tier !== "standard" && (
+        <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))] mt-2 opacity-70">
+          NOT YET AUTHORED FOR THIS TIER · SHOWING STANDARD
+        </div>
+      )}
     </div>
   );
 }
@@ -95,9 +122,9 @@ export default function LessonBlock({ block }) {
     case "widget":   return <Widget id={block.widgetId} />;
     case "diagram":  return <Diagram id={block.diagramId} />;
     case "chart":    return <Chart id={block.chartId} />;
-    case "caption":  return <Caption text={block.text} />;
-    case "takeaway": return <Takeaway text={block.text} />;
-    case "deepdive": return <DeepDive text={block.text} />;
+    case "caption":  return <Caption block={block} />;
+    case "takeaway": return <Takeaway block={block} />;
+    case "deepdive": return <DeepDive block={block} />;
     default: return null;
   }
 }

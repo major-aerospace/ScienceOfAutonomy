@@ -12,7 +12,8 @@ const TIERS = [
 
 export default function TierSelector({ inline = false }) {
   const { user, setUser } = useAuth();
-  const tier = (user && user !== false) ? (user.tier || "standard") : "standard";
+  // Use the reactive useTier hook so guests see their tier button highlight too.
+  const tier = useTier();
 
   const choose = async (id) => {
     if (id === tier) return;

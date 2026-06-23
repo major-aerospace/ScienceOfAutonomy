@@ -1,0 +1,48 @@
+{
+  "summary": "Phase 7 — all 3 user-flagged bugs verified FIXED. Backend regression: 83/83 pytest pass (no new tests needed — variant fields are optional strings on existing block schema; existing /api/lessons tests still cover the contract). FIX 1 (AutonomyLadder): clicking each of the 5 rungs updates `autonomy-ladder-selected` header (verified 'LV 0 · TELEOPERATION' / 'LV 2 · CONDITIONAL' / 'LV 4 · FULL AUTONOMY'); outcome panel contains all three sub-boxes `ladder-outcome-example` + `ladder-outcome-mission` + `ladder-outcome-failure`; rung-0 example mentions 'FPV racing drones', rung-4 example mentions 'ISR or planetary rovers'; example/mission/failure all differ across rungs 0/2/4. FIX 2 (Tier switch): on /lessons/l-autonomy-ladder, clicking `tier-eli12` shows `eli12-banner` + renders `caption-eli12` with friendly variant ('Imagine a ladder…') and `takeaway-eli12` ('It's a LADDER, not a SWITCH'); clicking `tier-deep` shows `deep-banner` + `caption-deep` containing 'SAE J3016' + 'ODD' + `takeaway-deep` containing 'contract'; both eli12 and deep tier buttons receive the active 'border-[#0047FF] bg-[#0047FF]' classes for GUEST users (confirmed via class attribute string); tier choice persists across page reload (deep banner still shown after F5). For an unauthored lesson (l-exploded-tour), banner still shows + caption-eli12/takeaway-eli12 elements still render BUT contain 'standard text shown' / 'NOT YET AUTHORED FOR THIS TIER · SHOWING STANDARD' marker — confirming tier IS active but content fell back to standard. FIX 3 (Dronability FAQ): /assessment intro shows `dronability-faq` widget with exactly 8 faq-toggle items; faq-answer-0 is open by default; clicking faq-toggle-4 opens answer-4 and collapses answer-0 (single-open accordion); clicking faq-toggle-4 again collapses it; faq-toggle-7 opens with correct content about 'flight medical or aptitude exam'. JWT login still works (verified via API: POST /api/auth/login → 200 + admin token; UI form is filled correctly, only Playwright selector for the submit button needs a tweak in future tests since the button is `<button>SIGN IN</button>` without type='submit'). NO JavaScript page errors thrown during testing (only one pre-existing benign deprecation warning: 'THREE.Clock has been deprecated. Please use THREE.Timer instead.' — does not break anything). All 3 bugs flagged by the user are deployable-ready.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Login form", "issues": ["SIGN IN button is a plain <button> without type='submit'. Form still works on click but native Enter-to-submit may not fire. Low priority; not user-blocking."]},
+      {"screen": "Three.js widgets (any /lessons/* using StabilityDroneWidget etc.)", "issues": ["Console warning: 'THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.' Non-blocking; appears once per page. Comes from a transitive dep of @react-three/drei."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase6_api.py",
+    "/app/backend/tests/test_phase5_api.py",
+    "/app/backend/tests/test_phase4_api.py",
+    "/app/backend/tests/test_phase3_api.py",
+    "/app/backend/tests/test_phase2_api.py",
+    "/app/backend/tests/test_backend_api.py",
+    "/app/test_reports/pytest/pytest_iter7_all.xml"
+  ],
+  "action_items": [
+    "(Optional, low-priority) Add type='submit' to the SIGN IN button in /app/frontend/src/pages/Login.jsx so Enter-key submission and Playwright button[type=submit] selectors work.",
+    "(Optional, doc-only) The review_request listed three variant-authored lesson IDs that don't exist: 'l-rtk-gps' (actual id is 'l-gnss-rtk'), 'l-sensor-fusion' (actual id is 'l-avoidance' or 'l-filtering'), 'l-imu' (no such lesson — seed_data uses 'l-sensor-zoo' for IMU material). Authored variants ARE present on the 8 correct lessons: l-autonomy-ladder, l-ooda-loop, l-lift-drag, l-airframes, l-stability, l-gnss-rtk, l-pid, l-avoidance. No code change needed — just clarify in the next handoff."
+  ],
+  "critical_code_review_comments": [
+    "AutonomyLadder.jsx is clean: per-rung object now carries example/mission/failure, the active rung's data flows through to the outcome panel via React state, and the three OutcomeBox children have stable data-testids. The 'ring-2 ring-[#0047FF]' active outline + 'isOn ? bg-[#0047FF]/10' cumulative tint pattern makes the selection state visually unambiguous.",
+    "LessonBlock.jsx Caption/Takeaway now correctly fall through: variantText = (eli12 ? block.eli12 : deep ? block.deep : null) || null, then text = variantText || block.text. The data-testid is intentionally `caption-${tier}` / `takeaway-${tier}` so tests can assert the *active* tier was applied, AND the 'standard text shown' / 'NOT YET AUTHORED' marker only appears when variantText is null and tier !== 'standard' — exactly the right semantics.",
+    "TierSelector.jsx switched from useAuth().user?.tier to the new useTier() hook for the `active` computation — this is the fix that made guest button highlighting work. The hook listens for the 'soa-tier' CustomEvent so any component subscribing to useTier() re-renders together. Clean.",
+    "Lesson.jsx adds a second banner block (deep-banner) that mirrors eli12-banner — both gated on the reactive tier value, both visible to guests, and the tier switch is reactive (no page reload required). The reactive update is correct because both the banner and LessonBlock components consume useTier(), which fires on the CustomEvent dispatched from TierSelector.choose().",
+    "Assessment.jsx DronabilityFAQ is implemented as a single-open accordion (open is an integer, click toggles to -1 to close). This is the right UX for an FAQ. The 8 items are statically declared, item 0 is the initial value of useState, and each toggle/answer pair has unique testids — fully testable.",
+    "Schema-wise: blocks now optionally carry `eli12` and `deep` string fields. Since these are optional and additive, no Pydantic model change was needed and no backend regression was introduced — verified by 83/83 pytest passing without modification.",
+    "Reactive tier system uses window.dispatchEvent(new CustomEvent('soa-tier', { detail: id })) — fine for a small SPA but consider migrating to React Context if you add more cross-component tier-aware widgets, to avoid the event-bus anti-pattern as the app grows."
+  ],
+  "updated_files": [
+    "/app/test_reports/pytest/pytest_iter7_all.xml (generated — full 83-test regression)",
+    "/app/test_reports/iteration_7.json (this file)"
+  ],
+  "success_rate": {"backend": "100% (83/83)", "frontend": "100% — FIX 1 + FIX 2 (banner+caption+takeaway+button-highlight+reload-persistence+unauthored-marker) + FIX 3 (FAQ 8 items, default open, expand/collapse) all verified; admin JWT login verified at API level + UI form fills correctly."},
+  "test_credentials": "Admin: admin@scienceofautonomy.app / autonomy2026 (verified via API).",
+  "seed_data_creation": "None. The 3 fixes are all UI/widget level; backend variants were already in seed_data.py from the main agent's change and load on backend start.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Reactive tier system: TierSelector.choose() writes localStorage('soa_tier_guest', id) for guests and dispatches window event 'soa-tier'. useTier() hook subscribes to that event. Playwright tests can either click tier buttons OR pre-set localStorage before navigating (e.g. localStorage.setItem('soa_tier_guest','eli12') then page.goto(...)). Caption/Takeaway data-testids are tier-dependent: `caption-eli12`, `caption-deep`, `caption-standard`, same for takeaway. AutonomyLadder rung data-testids are `ladder-rung-0`...`ladder-rung-4`; the outcome panel header `autonomy-ladder-selected` text is 'SELECTED · LV {n} · {NAME-UPPER}'. FAQ on /assessment: `dronability-faq` is in the intro stage only; if a test clicks 'Begin' first, the FAQ disappears (intro stage is replaced by MentalRotation). Note from this iteration: the review_request mentioned lesson IDs 'l-rtk-gps' / 'l-sensor-fusion' / 'l-imu' that don't exist — the real IDs with authored variants are l-autonomy-ladder, l-ooda-loop, l-lift-drag, l-airframes, l-stability, l-gnss-rtk, l-pid, l-avoidance.",
+  "rca of the issue": "All 3 user-flagged bugs root-cause and resolution verified: (1) AutonomyLadder previously had only static `desc` text per rung — the selection updated React state but no panel consumed it; main agent added per-rung example/mission/failure + an outcome panel that reads `RUNGS[active]`. (2) Caption/Takeaway previously rendered `block.text` only; the seed data shipped no per-tier variants, and the LessonBlock didn't read block.eli12/block.deep even if present. Main agent added the variant-lookup in LessonBlock + authored variants in seed_data.py for 8 lessons. (3) TierSelector previously read user?.tier from useAuth() for the `active` flag, so guests (user===false) had no active button. Main agent introduced the useTier() reactive hook that returns localStorage value for guests + listens to a 'soa-tier' CustomEvent so the button highlight + lesson page re-render in lockstep. (4) Dronability FAQ simply didn't exist on /assessment intro — main agent added the DronabilityFAQ component with 8 Q&A items, single-open accordion semantics, item 0 open by default."
+}

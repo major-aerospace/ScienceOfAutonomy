@@ -10,6 +10,7 @@ import MentalRotation from "@/components/assessment/MentalRotation";
 import Vigilance from "@/components/assessment/Vigilance";
 import Trainability from "@/components/assessment/Trainability";
 import { toast } from "sonner";
+import { ChevronDown, HelpCircle } from "lucide-react";
 
 const STAGES = ["intro", "mr", "vig", "train1", "interlude", "train2", "result"];
 
@@ -40,7 +41,7 @@ export default function Assessment() {
         psych = Math.max(0.1, data.score);
         simDetails = data;
       }
-    } catch {}
+    } catch { /* psychomotor stays at default 0.6 */ }
     const higher = 0.55;
     const dispo = 0.7;
 
@@ -108,6 +109,85 @@ function Intro({ onStart }) {
       <div className="md:col-span-3 mt-2">
         <button data-testid={TID.assessStart} onClick={onStart} className="soa-btn-primary">Begin · ~6 minutes</button>
       </div>
+      <div className="md:col-span-3 mt-8">
+        <DronabilityFAQ />
+      </div>
+    </div>
+  );
+}
+
+const FAQ_ITEMS = [
+  {
+    q: "What is Dronability, exactly?",
+    a: "Dronability is a short, science-grounded snapshot of how you currently learn skills relevant to operating autonomous systems. It measures four domains: spatial reasoning, sustained attention, motor learning (via the simulator), and how fast you improve with practice.",
+  },
+  {
+    q: "Is this a clinical test? An IQ test? A pilot selection test?",
+    a: "No. It is not clinical, diagnostic, or a screening tool. It is a self-assessment to help you choose where to start learning. Treat the result as a hint, not a verdict.",
+  },
+  {
+    q: "Why is 'Trainability' the headline result and not raw scores?",
+    a: "Decades of motor-learning research show that the slope of improvement is a better predictor of expert performance than first-attempt scores. Someone who is 'bad but improving fast' usually beats someone who is 'good but plateaued'.",
+  },
+  {
+    q: "Can I retake it? Will the result change?",
+    a: "Yes. You can retake it any time. Trainability slope is expected to shift as you practise, especially after a few simulator missions or completed lessons. Retake every 2–4 weeks to see the trend.",
+  },
+  {
+    q: "What if I do badly on Mental Rotation or Vigilance?",
+    a: "It just means those domains are where you have the most room to grow. The platform recommends starting with the track that targets your weakest domain — that's where each minute of practice produces the most improvement.",
+  },
+  {
+    q: "Why does Psychomotor only update after I use the simulator?",
+    a: "Psychomotor skill is best measured by actual flying, not a mouse-click test. Once you complete simulator missions (Precision Hover, Pylon Slalom, etc.), your personal-best times flow into this domain automatically.",
+  },
+  {
+    q: "Is my data shared, sold or used for selection?",
+    a: "No. Your scores are stored against your account so you can see your trend over time. They are never shared with employers, schools, or any third party. You can delete your account and all data at any time.",
+  },
+  {
+    q: "What's the difference between this and a real flight medical or aptitude exam?",
+    a: "A real flight medical or aptitude exam is administered by a licensed examiner, uses standardized batteries (e.g. SHL/CASS, AMES), and carries legal weight. This is none of those — it is a free educational on-ramp.",
+  },
+];
+
+function DronabilityFAQ() {
+  const [open, setOpen] = useState(0);
+  return (
+    <div data-testid="dronability-faq" className="soa-card p-6">
+      <div className="flex items-center gap-2">
+        <HelpCircle className="w-4 h-4 text-[#0047FF]" strokeWidth={1.5} />
+        <div className="soa-mono text-[10px] tracking-widest text-[#0047FF]">DRONABILITY · FAQ</div>
+      </div>
+      <h3 className="soa-display text-2xl font-bold mt-1">Questions before you start</h3>
+      <div className="mt-4 divide-y divide-[rgb(var(--soa-line))]">
+        {FAQ_ITEMS.map((it, i) => {
+          const isOpen = open === i;
+          return (
+            <div key={i} className="py-2" data-testid={`faq-item-${i}`}>
+              <button
+                onClick={() => setOpen(isOpen ? -1 : i)}
+                data-testid={`faq-toggle-${i}`}
+                className="w-full flex items-center justify-between gap-3 py-3 text-left"
+              >
+                <span className="font-semibold text-[rgb(var(--soa-ink))]">{it.q}</span>
+                <ChevronDown
+                  className={`w-4 h-4 shrink-0 text-[rgb(var(--soa-ink-3))] transition-transform ${isOpen ? "rotate-180" : ""}`}
+                  strokeWidth={1.5}
+                />
+              </button>
+              {isOpen && (
+                <div
+                  data-testid={`faq-answer-${i}`}
+                  className="pb-4 text-sm text-[rgb(var(--soa-ink-2))] leading-relaxed"
+                >
+                  {it.a}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -118,7 +198,7 @@ function Interlude({ onNext }) {
       <div className="soa-mono text-[10px] tracking-widest text-[#0047FF]">INTERLUDE</div>
       <h3 className="soa-display text-2xl font-bold mt-2">Same task. Again.</h3>
       <p className="text-[rgb(var(--soa-ink-2))] mt-2 max-w-md mx-auto">
-        We'll measure how much faster you get. That improvement is the most important signal in this assessment.
+        We&apos;ll measure how much faster you get. That improvement is the most important signal in this assessment.
       </p>
       <button data-testid={TID.assessNext} onClick={onNext} className="soa-btn-primary mt-5">Try again</button>
     </div>

@@ -178,9 +178,19 @@ LESSONS = {
         "estMinutes": 4,
         "blocks": [
             {"type": "widget", "widgetId": "autonomy-ladder"},
-            {"type": "caption", "text": "Each rung removes a human decision and gives it to the machine."},
+            {
+                "type": "caption",
+                "text": "Each rung removes a human decision and gives it to the machine.",
+                "eli12": "Imagine a ladder. At the bottom, you do everything. At the top, the robot does everything. Each step up, you let the robot do one more job.",
+                "deep": "Autonomy is a discrete spectrum, not a boolean. SAE J3016 (cars) and similar drone scales define 5–6 levels of operational design domain (ODD), each shrinking the human's required intervention envelope.",
+            },
             {"type": "diagram", "diagramId": "ooda-mini"},
-            {"type": "takeaway", "text": "Autonomy is not a switch — it's a ladder of trust."},
+            {
+                "type": "takeaway",
+                "text": "Autonomy is not a switch — it's a ladder of trust.",
+                "eli12": "It's a LADDER, not a SWITCH. You can stop on any step.",
+                "deep": "Autonomy is a contract: every level i specifies what the system handles vs. what the human must monitor. Mismatched expectations = the #1 cause of automation accidents.",
+            },
         ],
         "quiz": [
             _q("Which level still requires the human to actively fly?",
@@ -210,9 +220,19 @@ LESSONS = {
         "estMinutes": 3,
         "blocks": [
             {"type": "diagram", "diagramId": "ooda-loop"},
-            {"type": "caption", "text": "Observe, Orient, Decide, Act — and repeat 100× a second."},
+            {
+                "type": "caption",
+                "text": "Observe, Orient, Decide, Act — and repeat 100× a second.",
+                "eli12": "The robot keeps asking itself: What do I see? What does it mean? What should I do? Then it does it. Over and over, super fast.",
+                "deep": "OODA (Boyd, 1976) generalizes to all closed-loop autonomy: at runtime, this becomes a 50–1000 Hz control loop where sensor fusion, state estimation, planning and actuation share a strict deadline.",
+            },
             {"type": "widget", "widgetId": "signal-noise"},
-            {"type": "takeaway", "text": "Autonomy = a loop that never stops correcting itself."},
+            {
+                "type": "takeaway",
+                "text": "Autonomy = a loop that never stops correcting itself.",
+                "eli12": "Autonomous things are always checking their work — like you do when riding a bike.",
+                "deep": "Closed-loop > open-loop. Latency × gain × phase margin determines whether the loop is stable, marginally stable, or unstable.",
+            },
         ],
         "quiz": [
             _q("Which step turns raw sensor data into a world model?",
@@ -240,8 +260,18 @@ LESSONS = {
         "estMinutes": 5,
         "blocks": [
             {"type": "widget", "widgetId": "lift-lab"},
-            {"type": "caption", "text": "Lift grows with speed² and with angle of attack — until the wing stalls."},
-            {"type": "takeaway", "text": "Lift is free. Drag is the bill."},
+            {
+                "type": "caption",
+                "text": "Lift grows with speed² and with angle of attack — until the wing stalls.",
+                "eli12": "Push air down → it pushes the wing up. Push twice as fast, get four times the push. But tilt too much and it suddenly stops working.",
+                "deep": "Aerodynamic lift derives from the pressure differential across the airfoil per Bernoulli + Kutta-Joukowski. Lift scales with v² (dynamic pressure) and CL(α), which collapses at the critical angle of attack (~15° for most wings).",
+            },
+            {
+                "type": "takeaway",
+                "text": "Lift is free. Drag is the bill.",
+                "eli12": "Going up = cheap. Going forward = costs energy.",
+                "deep": "Endurance ∝ (L/D)^(3/2). Maximize lift-to-drag ratio at cruise, not just lift coefficient — that's the dominant design constraint for fixed-wing UAVs.",
+            },
             {"type": "deepdive", "text": "L = ½·ρ·v²·S·CL where CL itself depends on angle of attack. Past the stall angle CL collapses and the wing stops flying."},
         ],
         "quiz": [
@@ -270,8 +300,12 @@ LESSONS = {
         "estMinutes": 4,
         "blocks": [
             {"type": "chart", "chartId": "airframe-radar"},
-            {"type": "caption", "text": "Multirotor hovers. Fixed-wing endures. VTOL tries to do both."},
-            {"type": "takeaway", "text": "There is no best airframe — only the right one for the mission."},
+            {"type": "caption", "text": "Multirotor hovers. Fixed-wing endures. VTOL tries to do both.",
+             "eli12": "Helicopter-style drones can stop in mid-air. Plane-style drones fly farther but never stop. VTOL drones do both — but it's tricky.",
+             "deep": "Multirotor: low disk loading, high thrust-to-weight (~2:1), poor endurance (15–40 min). Fixed-wing: high L/D (~15), 2–10× endurance. VTOL: dual propulsion penalty (~20–30% payload loss)."},
+            {"type": "takeaway", "text": "There is no best airframe — only the right one for the mission.",
+             "eli12": "Different drones for different jobs — like different cars for different roads.",
+             "deep": "Airframe choice is a mission-profile optimization: range × payload × on-station time × precision-hover. No global optimum."},
         ],
         "quiz": [
             _q("Best endurance per Wh of battery?",
@@ -299,8 +333,12 @@ LESSONS = {
         "estMinutes": 4,
         "blocks": [
             {"type": "widget", "widgetId": "stability-drone"},
-            {"type": "caption", "text": "A quadrotor is unstable by design. Without code, it tips over."},
-            {"type": "takeaway", "text": "Stability is software."},
+            {"type": "caption", "text": "A quadrotor is unstable by design. Without code, it tips over.",
+             "eli12": "A quadcopter wants to fall over. The computer catches it 1000 times every second — that's why it flies.",
+             "deep": "A quadrotor has 4 actuators and 6 DOF — under-actuated. It is open-loop unstable: pitch/roll dynamics are non-minimum-phase and require active control via differential thrust at >100 Hz to remain bounded."},
+            {"type": "takeaway", "text": "Stability is software.",
+             "eli12": "The brain does the balancing — not the body.",
+             "deep": "Stability isn't a property of the airframe; it's a property of the airframe + controller + sensor + latency stack as a closed-loop system."},
         ],
         "quiz": [
             _q("Without a flight controller, a quadrotor will…",
@@ -415,8 +453,12 @@ LESSONS = {
         "estMinutes": 5,
         "blocks": [
             {"type": "widget", "widgetId": "rtk-visualizer"},
-            {"type": "caption", "text": "A base station broadcasts corrections. The rover shrinks its error."},
-            {"type": "takeaway", "text": "RTK is centimetres. GPS alone is metres."},
+            {"type": "caption", "text": "A base station broadcasts corrections. The rover shrinks its error.",
+             "eli12": "One radio sits perfectly still and yells 'I am HERE'. The drone listens and uses that to know exactly where IT is.",
+             "deep": "RTK uses the carrier phase (cm-wavelength) rather than just code-phase pseudoranges, plus a known-position base station's correction stream over RTCM-3 to resolve integer ambiguities — yielding 1–2 cm precision."},
+            {"type": "takeaway", "text": "RTK is centimetres. GPS alone is metres.",
+             "eli12": "Plain GPS = 'within a parking spot'. RTK = 'on the exact paint stripe'.",
+             "deep": "Standard SPS GPS: ~3–10 m CEP. RTK fixed: ~1–2 cm horizontal, 2–5 cm vertical. Trade-off: requires base station within ~30 km and continuous radio link."},
         ],
         "quiz": [
             _q("RTK improves accuracy from… to…",
@@ -498,9 +540,13 @@ LESSONS = {
         "estMinutes": 7,
         "blocks": [
             {"type": "widget", "widgetId": "pid-tuner"},
-            {"type": "caption", "text": "P reacts now · I cleans drift · D damps overshoot."},
+            {"type": "caption", "text": "P reacts now · I cleans drift · D damps overshoot.",
+             "eli12": "P pushes harder when you're far off. I notices when you keep being slightly off. D slows you down before you overshoot.",
+             "deep": "u(t) = Kp·e(t) + Ki·∫e(τ)dτ + Kd·de/dt. Kp sets bandwidth, Ki removes steady-state error (at the cost of phase lag), Kd improves transient response (at the cost of noise amplification)."},
             {"type": "diagram", "diagramId": "feedback-loop"},
-            {"type": "takeaway", "text": "Autonomy starts with a loop that never stops correcting itself."},
+            {"type": "takeaway", "text": "Autonomy starts with a loop that never stops correcting itself.",
+             "eli12": "Set a goal. Notice the gap. Fix the gap. Repeat — forever.",
+             "deep": "PID is the simplest universal closed-loop controller. Tune it correctly and it solves 90% of real-world control problems; tune it wrong and it builds the resonant frequency of disaster."},
             {"type": "deepdive", "text": "u(t) = Kp·e(t) + Ki·∫e(τ)dτ + Kd·de/dt. Kp speeds response, Ki kills steady-state error, Kd opposes velocity to reduce overshoot."},
         ],
         "quiz": [
@@ -581,8 +627,12 @@ LESSONS = {
         "estMinutes": 6,
         "blocks": [
             {"type": "widget", "widgetId": "sensor-fusion"},
-            {"type": "caption", "text": "Fusion turns several lying sensors into one truth."},
-            {"type": "takeaway", "text": "No single sensor is enough. Together, they are."},
+            {"type": "caption", "text": "Fusion turns several lying sensors into one truth.",
+             "eli12": "If your watch says 8:00 and your phone says 8:02, you don't pick one — you find a smart middle. That's sensor fusion.",
+             "deep": "An extended Kalman filter (EKF) merges noisy IMU integration with periodic absolute fixes (GPS, vision) using a weighted average inversely proportional to each source's covariance — minimizing the L2 estimation error of the fused state."},
+            {"type": "takeaway", "text": "No single sensor is enough. Together, they are.",
+             "eli12": "Many imperfect senses make one good one.",
+             "deep": "Observability ≠ measurability. Fusion creates observable states (like global position from inertial+GPS) that no single sensor alone could provide."},
         ],
         "quiz": [
             _q("Why fuse sensors at all?",

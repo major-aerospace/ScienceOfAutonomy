@@ -8,7 +8,7 @@ import Quiz from "@/components/lesson/Quiz";
 import Comments from "@/components/lesson/Comments";
 import TierSelector, { useTier } from "@/components/TierSelector";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Share2, Baby } from "lucide-react";
+import { ArrowLeft, ArrowRight, Share2, Baby, GraduationCap } from "lucide-react";
 
 export default function Lesson() {
   const { lessonId } = useParams();
@@ -67,8 +67,18 @@ export default function Lesson() {
         <div className="mt-5 border-l-[3px] border-[#FFCC00] bg-[#FFCC00]/10 p-4 rounded-sm flex items-start gap-3" data-testid="eli12-banner">
           <Baby className="w-5 h-5 mt-0.5 text-[rgb(var(--soa-ink))]" strokeWidth={1.6} />
           <div>
-            <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-2))]">EXPLAIN LIKE I'M 12</div>
+            <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-2))]">EXPLAIN LIKE I&apos;M 12</div>
             <div className="text-sm mt-1">No equations. No jargon. Just the idea.</div>
+          </div>
+        </div>
+      )}
+
+      {tier === "deep" && (
+        <div className="mt-5 border-l-[3px] border-[#0047FF] bg-[#0047FF]/10 p-4 rounded-sm flex items-start gap-3" data-testid="deep-banner">
+          <GraduationCap className="w-5 h-5 mt-0.5 text-[rgb(var(--soa-ink))]" strokeWidth={1.6} />
+          <div>
+            <div className="soa-mono text-[10px] tracking-widest text-[#0047FF]">DEEP DIVE · ENGINEERING TIER</div>
+            <div className="text-sm mt-1">Math, equations, and technical framing. Deep-dive sections open by default.</div>
           </div>
         </div>
       )}
