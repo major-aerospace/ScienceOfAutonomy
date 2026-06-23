@@ -52,6 +52,17 @@ Build a vendor-neutral, visual-first, PWA-ready interactive learning platform fo
 - **CMS authoring on DB (override pattern)**: new `db.lesson_overrides` collection layers admin edits on top of seed lessons without changing Python files. New admin endpoints `GET /api/admin/all-lessons`, `GET /api/admin/lessons/{id}`, `PUT /api/admin/lessons/{id}` (writes to overrides for seed, in-place for custom), `DELETE /api/admin/lessons/{id}/override` (revert). Admin UI fully rewritten with search/filter and a JSON-aware edit modal.
 - 83/83 backend pytest pass (11 new Phase-6 tests in `test_phase6_api.py`); full Playwright E2E pass for all 7 scenarios.
 
+### Phase 7 — User-reported polish (Feb 2026)
+- **AutonomyLadder widget** — Selecting an autonomy level used to be a no-op visually. Now every rung updates a live OUTCOME panel showing (a) who flies, (b) a real-world example, (c) a concrete mission scenario, (d) where it breaks. Verified across all 5 rungs.
+- **Difficulty tiers actually change content** — Previously tier only swapped a tiny label; lesson body was identical. Now:
+  - `LessonBlock.Caption` / `Takeaway` read `block.eli12` / `block.deep` and render different copy, with bold tier-coloured headers ("EXPLAINED · LIKE I'M 12", "TECHNICAL CAPTION") and an explicit "NOT YET AUTHORED FOR THIS TIER" marker so users always know when their selection was honoured vs. when fallback to standard happened.
+  - `DeepDive` blocks auto-open in Deep tier with a "UNLOCKED" pill.
+  - New "DEEP DIVE · ENGINEERING TIER" banner on every lesson page when tier=deep.
+  - `TierSelector` button highlights the active tier for guest users too (was broken — only persisted for signed-in users).
+  - Authored tier variants for 8 high-traffic lessons in `seed_data.py`: l-autonomy-ladder, l-ooda-loop, l-lift-drag, l-airframes, l-stability, l-gnss-rtk, l-pid, l-avoidance.
+- **Dronability FAQ** — `/assessment` intro now has an 8-item Q&A accordion answering the most-asked questions (what it is, clinical disclaimer, trainability rationale, retake policy, data privacy, etc.). First item open by default.
+- All 83/83 backend + 100% frontend E2E pass (iteration_7).
+
 ## Backlog
 - P2 — Replace `window.confirm()` in Admin revert with shadcn AlertDialog (polish only).
 - P2 — Public per-mission simulator leaderboard.
