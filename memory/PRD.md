@@ -43,5 +43,13 @@ Build a vendor-neutral, visual-first, PWA-ready interactive learning platform fo
 ### Testing
 - 47/47 backend pytest pass after the Phase 3 glossary fix. All requested Phase 3 frontend flows verified.
 
+### Maintenance (Feb 2026)
+- Fixed React Hook `exhaustive-deps` warnings in `Comments.jsx` (wrapped `load` in `useCallback`) and `Vigilance.jsx` (wrapped `end` in `useCallback`, mirrored state into refs to keep effect stable, escaped apostrophe). Frontend now compiles clean (no warnings).
+
+## Backlog
+- P1 — Content Studio export (real CSV calendar download + auto-generated square/vertical takeaway cards for Reels/Shorts).
+- P1 — CMS authoring DB migration (move `seed_data.py` curriculum into MongoDB so Admin CMS can fully CRUD).
+- P0/V2 — Emergent-managed Google Auth alongside JWT.
+
 ## Credentials
 See `/app/memory/test_credentials.md`.

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { TID } from "@/lib/tids";
 
 // Vigilance task: stare at the radar sweep. Press the button when a rare target appears.
@@ -14,6 +14,22 @@ export default function Vigilance({ onDone }) {
   const [falseAlarms, setFalseAlarms] = useState(0);
   const [totalTargets, setTotalTargets] = useState(0);
   const targetTimerRef = useRef(null);
+  const hitsRef = useRef(0);
+  const falseRef = useRef(0);
+  const totalRef = useRef(0);
+  const onDoneRef = useRef(onDone);
+
+  useEffect(() => { onDoneRef.current = onDone; }, [onDone]);
+  useEffect(() => { hitsRef.current = hits; }, [hits]);
+  useEffect(() => { falseRef.current = falseAlarms; }, [falseAlarms]);
+  useEffect(() => { totalRef.current = totalTargets; }, [totalTargets]);
+
+  const end = useCallback(() => {
+    setRunning(false);
+    const t = totalRef.current;
+    const score = t === 0 ? 0.5 : Math.max(0, Math.min(1, (hitsRef.current - falseRef.current * 0.5) / Math.max(1, t)));
+    setTimeout(() => onDoneRef.current(score), 600);
+  }, []);
 
   useEffect(() => {
     if (!running) return;
@@ -38,13 +54,7 @@ export default function Vigilance({ onDone }) {
     };
     scheduleNext();
     return () => { clearInterval(id); if (targetTimerRef.current) clearTimeout(targetTimerRef.current); };
-  }, [running]);
-
-  const end = () => {
-    setRunning(false);
-    const score = totalTargets === 0 ? 0.5 : Math.max(0, Math.min(1, (hits - falseAlarms * 0.5) / Math.max(1, totalTargets)));
-    setTimeout(() => onDone(score), 600);
-  };
+  }, [running, end]);
 
   const press = () => {
     if (!running) return;
@@ -98,7 +108,7 @@ export default function Vigilance({ onDone }) {
         ) : (
           <button data-testid={TID.vigilHit} onClick={press} className="soa-btn-primary">PRESS · TARGET</button>
         )}
-        <div className="soa-mono text-[11px] text-[rgb(var(--soa-ink-3))]">Hit when you see red. Wait when you don't.</div>
+        <div className="soa-mono text-[11px] text-[rgb(var(--soa-ink-3))]">Hit when you see red. Wait when you don&apos;t.</div>
       </div>
     </div>
   );

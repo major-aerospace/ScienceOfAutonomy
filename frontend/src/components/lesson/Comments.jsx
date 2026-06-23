@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -10,10 +10,10 @@ export default function Comments({ lessonId }) {
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const load = () => {
+  const load = useCallback(() => {
     api.get(`/lessons/${lessonId}/comments`).then(({ data }) => setComments(data.comments || []));
-  };
-  useEffect(() => { load(); }, [lessonId]);
+  }, [lessonId]);
+  useEffect(() => { load(); }, [load]);
 
   const submit = async (e) => {
     e.preventDefault();
