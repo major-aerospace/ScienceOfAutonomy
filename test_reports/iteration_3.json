@@ -41,7 +41,7 @@
     "/app/test_reports/pytest/pytest_iter3.xml (generated)"
   ],
   "success_rate": {"backend": "97.9% (46/47)", "frontend": "~95% of requested Phase 3 flows verified"},
-  "test_credentials": "Admin: admin@scienceofautonomy.app / autonomy2026. Ad-hoc test users TEST_p3_*/TEST_p3cert_*/TEST_p3pid_* registered with password TestPass123!.",
+  "test_credentials": "Admin: admin@scienceofautonomy.app / [redacted]. Ad-hoc test users TEST_p3_*/TEST_p3cert_*/TEST_p3pid_* registered with password TestPass123!.",
   "seed_data_creation": "Admin completed 5 foundations lessons during testing (admin earned 'five-lessons' badge as part of certificate-eligibility test). Multiple TEST_ prefixed users created but not cleaned up. Custom lessons created during admin CRUD test are deleted by the same test.",
   "retest_needed": true,
   "main_agent_can_self_test": true,

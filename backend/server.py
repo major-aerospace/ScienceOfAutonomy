@@ -8,17 +8,22 @@ load_dotenv(ROOT_DIR / ".env")
 import os
 import csv
 import io
+import math
+import time
 import uuid
+import asyncio
 import logging
-import httpx
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Literal
 
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, Request, Response, Header
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
+from google.oauth2 import id_token as google_id_token
+from google.auth.transport import requests as google_requests
+from google.auth import exceptions as google_auth_exceptions
 
 from auth import (
     hash_password,
@@ -30,6 +35,30 @@ from auth import (
 from seed_data import TRACKS, LESSONS, all_lessons_list
 from glossary import GLOSSARY, search_glossary
 from badges import BADGES, BADGE_MAP, evaluate_badges
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
+
+# --------------------------------------------------------------------------------------
+# Config — fail fast on unsafe settings
+# --------------------------------------------------------------------------------------
+if len(os.environ.get("JWT_SECRET", "")) < 32:
+    raise RuntimeError(
+        "JWT_SECRET is missing or shorter than 32 characters. Set it to a long random value, e.g. "
+        "python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+    )
+
+# Google OAuth "Web application" client ID(s), comma-separated. Empty = Google sign-in off.
+GOOGLE_CLIENT_IDS = [c.strip() for c in os.environ.get("GOOGLE_CLIENT_ID", "").split(",") if c.strip()]
+
+# Admin account is created/updated from env at startup — there is deliberately no default.
+MIN_ADMIN_PASSWORD_LENGTH = 12
+
+# Sign-in throttling: after this many wrong passwords for one email inside the window,
+# that email is locked for LOGIN_LOCK_SECONDS.
+LOGIN_MAX_FAILURES = 10
+LOGIN_WINDOW_SECONDS = 15 * 60
+LOGIN_LOCK_SECONDS = 15 * 60
 
 # --------------------------------------------------------------------------------------
 # DB
@@ -114,8 +143,9 @@ class LessonPatch(BaseModel):
     socialClip: Optional[dict] = None
 
 
-class GoogleSessionBody(BaseModel):
-    session_id: Optional[str] = None  # accepted in body OR X-Session-ID header
+class GoogleCredentialBody(BaseModel):
+    # The ID token ("credential") returned to the browser by Google Identity Services.
+    credential: str = Field(min_length=20, max_length=8192)
 
 
 # --------------------------------------------------------------------------------------
@@ -237,12 +267,50 @@ async def register(body: RegisterBody, response: Response):
     return {"user": public_user(user_doc), "token": token}
 
 
+async def _login_lock_remaining(email: str) -> int:
+    """Seconds until this email may try a password again (0 = not locked)."""
+    doc = await db.login_attempts.find_one({"email": email}, {"_id": 0})
+    if not doc:
+        return 0
+    remaining = (doc.get("locked_until") or 0) - time.time()
+    return math.ceil(remaining) if remaining > 0 else 0
+
+
+async def _record_login_failure(email: str) -> None:
+    now = time.time()
+    doc = await db.login_attempts.find_one({"email": email}, {"_id": 0})
+    if not doc or now - (doc.get("window_start") or 0) > LOGIN_WINDOW_SECONDS:
+        failures, window_start = 1, now
+    else:
+        failures, window_start = (doc.get("failures") or 0) + 1, doc["window_start"]
+    update = {
+        "failures": failures,
+        "window_start": window_start,
+        "locked_until": 0,
+        # TTL index clears stale rows on its own.
+        "expires_at": datetime.now(timezone.utc) + timedelta(seconds=LOGIN_WINDOW_SECONDS + LOGIN_LOCK_SECONDS),
+    }
+    if failures >= LOGIN_MAX_FAILURES:
+        update["locked_until"] = now + LOGIN_LOCK_SECONDS
+        logger.warning("Password sign-in locked for %s after %d failed attempts", email, failures)
+    await db.login_attempts.update_one({"email": email}, {"$set": update}, upsert=True)
+
+
 @api.post("/auth/login")
 async def login(body: LoginBody, response: Response):
     email = body.email.lower().strip()
+    wait = await _login_lock_remaining(email)
+    if wait:
+        minutes = max(1, math.ceil(wait / 60))
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many failed sign-in attempts. Try again in {minutes} minute{'s' if minutes > 1 else ''}.",
+        )
     user = await db.users.find_one({"email": email})
-    if not user or not verify_password(body.password, user["password_hash"]):
+    if not user or not user.get("password_hash") or not verify_password(body.password, user["password_hash"]):
+        await _record_login_failure(email)
         raise HTTPException(status_code=401, detail="Invalid email or password")
+    await db.login_attempts.delete_one({"email": email})
     token = create_access_token(user["id"], email)
     set_auth_cookie(response, token)
     return {"user": public_user(user), "token": token}
@@ -254,52 +322,59 @@ async def logout(response: Response):
     return {"ok": True}
 
 
-# Emergent-managed Google Auth.
-# REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH.
-EMERGENT_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
+# Google sign-in (Google Identity Services).
+# The browser receives a Google-signed ID token ("credential") and posts it here. We verify
+# its signature, audience (our client ID), issuer and expiry, then find-or-create the user
+# and issue our own JWT — the same token the rest of the app already uses.
+def _verify_google_credential(credential: str) -> dict:
+    return google_id_token.verify_oauth2_token(
+        credential,
+        google_requests.Request(),
+        GOOGLE_CLIENT_IDS,
+        clock_skew_in_seconds=10,
+    )
 
 
-@api.post("/auth/google-session")
-async def google_session(
-    body: GoogleSessionBody,
-    response: Response,
-    x_session_id: Optional[str] = Header(default=None, alias="X-Session-ID"),
-):
-    sid = x_session_id or body.session_id
-    if not sid:
-        raise HTTPException(status_code=400, detail="Missing session_id")
+@api.post("/auth/google")
+async def google_sign_in(body: GoogleCredentialBody, response: Response):
+    if not GOOGLE_CLIENT_IDS:
+        raise HTTPException(status_code=503, detail="Google sign-in is not configured on this server")
+    if body.credential.count(".") != 2:  # not a JWT at all — don't bother asking Google
+        raise HTTPException(status_code=401, detail="Google sign-in could not be verified. Please try again.")
     try:
-        async with httpx.AsyncClient(timeout=10) as hx:
-            r = await hx.get(EMERGENT_SESSION_URL, headers={"X-Session-ID": sid})
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Emergent auth unreachable: {e}")
-    if r.status_code != 200:
-        raise HTTPException(status_code=401, detail="Invalid or expired Google session")
-    payload = r.json() or {}
+        payload = await asyncio.to_thread(_verify_google_credential, body.credential)
+    except google_auth_exceptions.TransportError as e:
+        logger.warning("Could not fetch Google signing keys: %s", e)
+        raise HTTPException(status_code=502, detail="Could not reach Google to verify sign-in. Please try again.")
+    except (ValueError, google_auth_exceptions.GoogleAuthError):
+        raise HTTPException(status_code=401, detail="Google sign-in could not be verified. Please try again.")
+
     email = (payload.get("email") or "").lower().strip()
-    name = (payload.get("name") or "").strip() or email.split("@")[0]
-    if not email:
-        raise HTTPException(status_code=401, detail="Google session has no email")
+    if not email or payload.get("email_verified") is not True:
+        raise HTTPException(status_code=401, detail="Your Google account's email address is not verified.")
+    name = (payload.get("name") or "").strip()[:80] or email.split("@")[0]
+    picture = payload.get("picture", "")
+    now = datetime.now(timezone.utc).isoformat()
 
     existing = await db.users.find_one({"email": email})
     if existing:
-        # Link Google to existing account; do not duplicate.
-        providers = existing.get("auth_provider", "password")
-        if "google" not in providers:
-            providers = f"{providers},google" if providers else "google"
+        # Link Google to the existing account (Google has verified the email); never duplicate.
+        providers = existing.get("auth_provider") or "password"
+        if "google" not in providers.split(","):
+            providers = f"{providers},google"
         await db.users.update_one(
             {"id": existing["id"]},
             {"$set": {
                 "auth_provider": providers,
-                "google_picture": payload.get("picture", ""),
-                "last_login_at": datetime.now(timezone.utc).isoformat(),
+                "google_sub": payload.get("sub"),
+                "google_picture": picture,
+                "last_login_at": now,
             }},
         )
         user_doc = await db.users.find_one({"id": existing["id"]})
     else:
-        uid = str(uuid.uuid4())
         user_doc = {
-            "id": uid,
+            "id": str(uuid.uuid4()),
             "email": email,
             "name": name,
             "password_hash": "",  # no password; Google-only account
@@ -310,8 +385,10 @@ async def google_session(
             "badges": [],
             "role": "user",
             "auth_provider": "google",
-            "google_picture": payload.get("picture", ""),
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "google_sub": payload.get("sub"),
+            "google_picture": picture,
+            "created_at": now,
+            "last_login_at": now,
         }
         await db.users.insert_one(user_doc)
 
@@ -1144,9 +1221,30 @@ async def on_startup():
     await db.lesson_overrides.create_index("id", unique=True)
     await db.comments.create_index([("lesson_id", 1), ("created_at", -1)])
     await db.sim_runs.create_index([("user_id", 1), ("mission", 1), ("time_sec", 1)])
-    # seed admin
-    admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com").lower()
-    admin_pw = os.environ.get("ADMIN_PASSWORD", "admin123")
+    await db.login_attempts.create_index("email", unique=True)
+    await db.login_attempts.create_index("expires_at", expireAfterSeconds=0)
+    await _ensure_admin()
+    logger.info("CORS origins: %s", ", ".join(CORS_ORIGINS))
+    logger.info("Google sign-in: %s", "enabled" if GOOGLE_CLIENT_IDS else "disabled (GOOGLE_CLIENT_ID not set)")
+
+
+async def _ensure_admin():
+    """Create or update the single admin account from ADMIN_EMAIL / ADMIN_PASSWORD.
+
+    No defaults: if either is missing or the password is too short, no admin is touched.
+    The env var is the source of truth — change ADMIN_PASSWORD and restart to rotate it.
+    """
+    admin_email = (os.environ.get("ADMIN_EMAIL") or "").lower().strip()
+    admin_pw = os.environ.get("ADMIN_PASSWORD") or ""
+    if not admin_email or not admin_pw:
+        logger.warning("ADMIN_EMAIL / ADMIN_PASSWORD not set — no admin account created or updated.")
+        return
+    if len(admin_pw) < MIN_ADMIN_PASSWORD_LENGTH:
+        logger.error(
+            "ADMIN_PASSWORD is shorter than %d characters — admin account NOT created or updated.",
+            MIN_ADMIN_PASSWORD_LENGTH,
+        )
+        return
     existing = await db.users.find_one({"email": admin_email})
     if not existing:
         await db.users.insert_one({
@@ -1160,8 +1258,22 @@ async def on_startup():
             "streak": 0,
             "badges": [],
             "role": "admin",
+            "auth_provider": "password",
             "created_at": datetime.now(timezone.utc).isoformat(),
         })
+        logger.info("Admin account created for %s", admin_email)
+        return
+    updates = {}
+    if existing.get("role") != "admin":
+        updates["role"] = "admin"
+    if not verify_password(admin_pw, existing.get("password_hash") or ""):
+        updates["password_hash"] = hash_password(admin_pw)
+        providers = existing.get("auth_provider") or "password"
+        if "password" not in providers.split(","):
+            updates["auth_provider"] = f"{providers},password"
+    if updates:
+        await db.users.update_one({"id": existing["id"]}, {"$set": updates})
+        logger.info("Admin account %s updated (%s)", admin_email, ", ".join(sorted(updates)))
 
 
 @app.on_event("shutdown")
@@ -1171,13 +1283,18 @@ async def on_shutdown():
 
 app.include_router(api)
 
+# The frontend authenticates with a Bearer token, so browsers only need CORS from the
+# deployed frontend origin(s). Set CORS_ORIGINS to e.g. "https://scienceofautonomy.pages.dev".
+CORS_ORIGINS = [
+    o.strip().rstrip("/")
+    for o in os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+    if o.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+    # Cookies are only ever allowed for explicitly listed origins, never with "*".
+    allow_credentials="*" not in CORS_ORIGINS,
+    allow_origins=CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)

@@ -63,6 +63,13 @@ Build a vendor-neutral, visual-first, PWA-ready interactive learning platform fo
 - **Dronability FAQ** — `/assessment` intro now has an 8-item Q&A accordion answering the most-asked questions (what it is, clinical disclaimer, trainability rationale, retake policy, data privacy, etc.). First item open by default.
 - All 83/83 backend + 100% frontend E2E pass (iteration_7).
 
+### Launch prep — off Emergent (Oct 2026)
+- **Emergent removed**: dropped `emergentintegrations` (backend) and `@emergentbase/visual-edits` (frontend); removed the Emergent script, "Made with Emergent" badge and Emergent's PostHog analytics/session recording from `public/index.html`. Backend `requirements.txt` trimmed to what the code imports (pinned); dev tools moved to `requirements-dev.txt`. `frontend/yarn.lock` committed; Node pinned to 22.
+- **Own Google sign-in** (replaces Emergent-managed auth): Google Identity Services button → `POST /api/auth/google {credential}` → backend verifies the ID token against `GOOGLE_CLIENT_ID` (signature, audience, issuer, expiry, verified email) → find-or-create/link user → our JWT. `/auth/google-session` and `/auth/callback` are gone. Button hides itself when `REACT_APP_GOOGLE_CLIENT_ID` is unset. Do not reintroduce Emergent-managed auth.
+- **Admin hardening**: no default admin; created/rotated from `ADMIN_EMAIL`/`ADMIN_PASSWORD` (12+ chars) at startup. Password sign-in lockout (10 failures / 15 min per email → 15 min lock). Server refuses to start with a missing/short `JWT_SECRET`. CORS restricted to `CORS_ORIGINS` (no credentials with `*`). Plaintext admin credentials scrubbed from repo files; tests read admin creds from env.
+- **Deploy**: `render.yaml` (API on Render), Cloudflare Pages (frontend), MongoDB Atlas M0 — steps in `README.md`. PWA icons added so Android "Install app" works.
+- 90/90 backend tests pass locally; production build passes with `CI=true`.
+
 ## Backlog
 - P2 — Replace `window.confirm()` in Admin revert with shadcn AlertDialog (polish only).
 - P2 — Public per-mission simulator leaderboard.
