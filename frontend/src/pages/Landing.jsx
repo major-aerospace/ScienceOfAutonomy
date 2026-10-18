@@ -1,219 +1,51 @@
 import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { HeroDrone } from "@/components/three/Drone3D";
-import { ArrowRight, Activity, Layers, Compass, Radio, GitBranch, Users, Shield, Globe, Cpu, Plane, Gamepad2 } from "lucide-react";
-import { TID } from "@/lib/tids";
-import { api } from "@/lib/api";
-
-const TRACK_ICONS = {
-  "track-foundations": Plane,
-  "track-anatomy": Layers,
-  "track-gnc": Compass,
-};
-
-const fade = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } };
-
+import { ArrowUpRight, ArrowRight, BookOpen, SlidersHorizontal, Compass, Users, Sparkles, Scan, Route, CircleHelp } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import "./Welcome.css";
+const topics = [
+ ["sense", "Sense the world", "From measurements to useful information.", Scan],
+ ["feedback", "Close the loop", "Why feedback changes what happens next.", SlidersHorizontal],
+ ["uncertainty", "Work with uncertainty", "Explore noisy signals and imperfect estimates.", Sparkles],
+ ["planning", "Choose a path", "Understand goals, constraints, and trade-offs.", Route],
+ ["human", "Keep people in the loop", "Know when a system should ask for help.", Users],
+ ["systems", "See the whole system", "Bring sensing, decisions, and action together.", Compass],
+];
+function AutonomyWorld() {
+ return <div className="welcome-world">
+  <div className="world-caption"><span className="world-dot"/> A SYSTEM THAT LEARNS FROM FEEDBACK</div>
+  <svg viewBox="0 0 620 420" role="img" aria-label="An inspection robot following a path through a greenhouse">
+   <defs><linearGradient id="terrain" x2="1" y2="1"><stop stopColor="#d9e8da"/><stop offset="1" stopColor="#b0cfc3"/></linearGradient><linearGradient id="glass" x2="0" y2="1"><stop stopColor="#ffffff" stopOpacity=".7"/><stop offset="1" stopColor="#aac9bf" stopOpacity=".5"/></linearGradient></defs>
+   <ellipse cx="317" cy="355" rx="242" ry="35" fill="#0e3d3b" opacity=".08"/>
+   <path d="M45 255 300 115 584 260 324 400Z" fill="url(#terrain)"/>
+   <path d="M45 255v15l279 145v-15ZM324 400l260-140v14L324 415Z" fill="#83aca0"/>
+   <path d="m106 258 109-59 143 74-107 62Z" fill="#eaf1e5"/>
+   <path d="m219 202 140-73 138 72-140 77Z" fill="#ddece5" stroke="#7eaaa1"/>
+   <path d="M219 202v-92l70-76 70 23 138 72v72l-140 77v-99Z" fill="url(#glass)" stroke="#739e93" strokeWidth="2"/>
+   <path d="m219 110 138 69 140-73-140-72-68 0ZM357 179v99M289 34v168m138-96v131M219 157l138 70 140-73" fill="none" stroke="#5d9187" strokeWidth="2"/>
+   {[0,1,2,3,4].map(i=><g key={i} transform={`translate(${265+i*30},${187+i*15})`}><path d="M-15 5 16-12 31-4 1 13Z" fill="#779567"/><path d="M3 2v-25m0 10c-22 0-18-19-10-12 8 3 10 10 10 12 4-18 21-17 15-7-3 4-9 7-15 7" fill="#507c56" stroke="#507c56" strokeWidth="2"/></g>)}
+   <path d="m115 272 143 73q26 12 49-2l156-85" fill="none" stroke="#f9fbef" strokeWidth="14" strokeLinecap="round"/>
+   <path d="m115 272 143 73q26 12 49-2l156-85" fill="none" stroke="#669d91" strokeWidth="2" strokeDasharray="6 7"/>
+   <g transform="translate(269 322)"><ellipse cy="15" rx="32" ry="11" fill="#163e3e" opacity=".2"/><circle cx="-22" cy="6" r="11" fill="#23484c"/><circle cx="22" cy="6" r="11" fill="#23484c"/><path d="m-28-8 28-13 28 13v17L0 21-28 8Z" fill="#f7faf0" stroke="#5f8982"/><path d="m-28-8 28 12 28-12M0 4v17" fill="none" stroke="#87aaa0"/><rect x="-9" y="-28" width="18" height="16" rx="5" fill="#23484c"/><circle cy="-21" r="4" fill="#e0b56c"/><path d="M-5-30-60-83 34-100 5-30" fill="#e3b568" opacity=".22"/></g>
+   <g fill="#688e82"><circle cx="122" cy="220" r="18"/><circle cx="146" cy="205" r="14"/><path d="M122 224v23m24-34v19" stroke="#476756" strokeWidth="5"/></g>
+  </svg>
+  <div className="world-loop">{["Sense", "Decide", "Act", "Check"].map((word,i)=><span key={word}><b>0{i+1}</b>{word}{i<3&&<ArrowRight size={14}/>}</span>)}</div>
+  <div className="world-footnote">A greenhouse inspection robot · one everyday example</div>
+ </div>;
+}
 export default function Landing() {
-  const [tracks, setTracks] = useState([]);
-
-  useEffect(() => {
-    api.get("/tracks").then(({ data }) => setTracks(data.tracks || [])).catch(() => {});
-  }, []);
-
-  return (
-    <div>
-      {/* HERO */}
-      <section className="relative soa-blueprint-bg">
-        <div className="max-w-7xl mx-auto px-6 pt-20 pb-16 md:pt-32 md:pb-28 grid lg:grid-cols-[1.05fr,1fr] gap-12 items-center">
-          <motion.div {...fade} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}>
-            <div className="soa-mono text-[10px] tracking-[0.32em] text-[rgb(var(--soa-ink-3))]">
-              SCIENCE · ASSESSMENT · SIMULATOR
-            </div>
-            <h1 className="soa-display text-5xl md:text-[88px] font-black tracking-tighter leading-[0.92] mt-6">
-              Learn autonomy<br />the way you'd<br />
-              <span className="text-[rgb(var(--soa-primary))]">design&nbsp;it.</span>
-            </h1>
-            <p className="text-lg md:text-xl text-[rgb(var(--soa-ink-2))] mt-8 max-w-xl leading-relaxed">
-              Bite-sized lessons. A 3D flight simulator. Practice activities with personal feedback. One platform, no brand placement.
-            </p>
-            <div className="mt-10 flex flex-wrap gap-3">
-              <Link to="/simulator" data-testid={TID.heroStart} className="soa-btn-primary">
-                <Gamepad2 className="w-4 h-4" /> Open the simulator
-              </Link>
-              <Link to="/tracks" className="soa-btn-secondary">
-                Browse curriculum <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-            <div className="mt-10 flex items-center gap-8 soa-mono text-[10px] tracking-[0.28em] text-[rgb(var(--soa-ink-3))]">
-              <span>10 TRACKS</span>
-              <span>46 LESSONS</span>
-              <span>1 SIMULATOR</span>
-            </div>
-          </motion.div>
-
-          {/* 3D Hero */}
-          <motion.div
-            {...fade}
-            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-            className="relative h-[420px] md:h-[520px]"
-          >
-            <div className="absolute inset-0 soa-grid-bg rounded-sm" />
-            <div className="absolute inset-0 border-[1.5px] border-[rgb(var(--soa-line))] rounded-sm overflow-hidden bg-[rgb(var(--soa-surface))]">
-              <HeroDrone />
-              <span className="absolute top-3 left-3 soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">QUADROTOR · GENERIC</span>
-              <span className="absolute bottom-3 left-3 soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-primary))]">RPM · 28,400</span>
-              <span className="absolute bottom-3 right-3 soa-mono text-[10px] tracking-widest text-[#00C759]">LINK · OK</span>
-              <span className="absolute top-2 left-2 w-3 h-3 border-l-[1.5px] border-t-[1.5px] border-[rgb(var(--soa-line))]" />
-              <span className="absolute top-2 right-2 w-3 h-3 border-r-[1.5px] border-t-[1.5px] border-[rgb(var(--soa-line))]" />
-              <span className="absolute bottom-2 left-2 w-3 h-3 border-l-[1.5px] border-b-[1.5px] border-[rgb(var(--soa-line))]" />
-              <span className="absolute bottom-2 right-2 w-3 h-3 border-r-[1.5px] border-b-[1.5px] border-[rgb(var(--soa-line))]" />
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* PILLARS */}
-      <section className="border-y border-[rgb(var(--soa-line))] bg-[rgb(var(--soa-surface))]">
-        <div className="max-w-7xl mx-auto px-6 py-12 grid md:grid-cols-3 gap-10">
-          {[
-            { k: "01", t: "Learn", d: "10 vendor-neutral tracks. Every lesson is a model, a graph or a sim — never a paragraph." },
-            { k: "02", t: "Assess", d: "Spatial and attention activities, simulator feedback, and change between practice attempts." },
-            { k: "03", t: "Fly", d: "A built-in 3D drone simulator. Your gate-course time feeds your psychomotor score." },
-          ].map((s, i) => (
-            <motion.div
-              key={s.k}
-              {...fade}
-              viewport={{ once: true, margin: "-80px" }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: i * 0.08 }}
-            >
-              <div className="soa-mono text-[10px] tracking-[0.3em] text-[rgb(var(--soa-primary))]">{s.k}</div>
-              <div className="soa-display text-2xl md:text-3xl font-bold mt-3">{s.t}</div>
-              <p className="text-[rgb(var(--soa-ink-2))] mt-3 leading-relaxed text-[15px]">{s.d}</p>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* TRACKS PREVIEW */}
-      <section className="max-w-7xl mx-auto px-6 py-16 md:py-24">
-        <div className="grid md:grid-cols-[1fr,auto] gap-4 items-end">
-          <div>
-            <div className="soa-mono text-[11px] tracking-widest text-[#0047FF]">CURRICULUM</div>
-            <h2 className="soa-display text-3xl md:text-5xl font-extrabold tracking-tight mt-2">
-              Climb from rotor to swarm.
-            </h2>
-          </div>
-          <Link to="/tracks" className="soa-btn-secondary">All curriculum</Link>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-6 mt-10">
-          {tracks.map((t, i) => {
-            const Icon = TRACK_ICONS[t.id] || Layers;
-            return (
-              <Link
-                to={`/tracks/${t.id}`}
-                data-testid={TID.trackCard(t.id)}
-                key={t.id}
-                className="soa-card soa-card-clickable p-6 group relative"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">TRACK · {String(t.order).padStart(2, "0")}</div>
-                  <Icon className="w-5 h-5 text-[#0047FF]" strokeWidth={1.5} />
-                </div>
-                <h3 className="soa-display text-xl md:text-2xl font-bold mt-3 leading-tight">{t.title}</h3>
-                <p className="text-sm text-[rgb(var(--soa-ink-2))] mt-2">{t.summary}</p>
-                <div className="flex items-center justify-between mt-5 soa-mono text-[11px] tracking-widest text-[rgb(var(--soa-ink-2))]">
-                  <span>{t.lessonCount} LESSONS · {t.moduleCount} MODULES</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" strokeWidth={1.5} />
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* Full curriculum strip */}
-        <div className="mt-10 border-t border-[rgb(var(--soa-line))] pt-6">
-          <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">FULL CURRICULUM</div>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {["Sensing & Perception", "Comms & Connectivity", "Autonomy Stack & AI", "Multi-Agent & Swarms", "Human Factors", "Safety & Ethics", "Real-World Applications"].map((n) => (
-              <span key={n} className="soa-chip">{n}</span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* SIMULATOR SHOWCASE */}
-      <section className="bg-[rgb(var(--soa-panel))] text-white">
-        <div className="max-w-7xl mx-auto px-6 py-20 md:py-28 grid lg:grid-cols-2 gap-12 items-center">
-          <motion.div {...fade} viewport={{ once: true }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
-            <div className="soa-mono text-[10px] tracking-[0.3em] text-[rgb(var(--soa-primary))]">FLAGSHIP · SIMULATOR</div>
-            <h2 className="soa-display text-4xl md:text-6xl font-black tracking-tighter mt-4 leading-[0.95]">
-              A real flight loop,<br />in your browser.
-            </h2>
-            <p className="text-lg text-neutral-400 mt-5 max-w-md leading-relaxed">
-              Throttle, drag, yaw — every input feeds physics. Fly a gate course in 3D on desktop, an arcade variant on mobile. Your best time becomes part of your Dronability profile.
-            </p>
-            <Link to="/simulator" className="soa-btn-primary mt-7 inline-flex">
-              <Gamepad2 className="w-4 h-4" /> Take flight
-            </Link>
-          </motion.div>
-          <motion.div {...fade} viewport={{ once: true }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1 }}>
-            <div className="relative aspect-video border border-neutral-800 rounded-sm overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#0047FF]/30 via-transparent to-transparent" />
-              <div className="absolute inset-0 grid place-items-center">
-                <div className="text-center">
-                  <Gamepad2 className="w-12 h-12 mx-auto text-[#0047FF]" strokeWidth={1.2} />
-                  <div className="soa-mono text-[10px] tracking-widest text-neutral-500 mt-3">WASD · SPACE · SHIFT</div>
-                  <div className="soa-display text-xl font-bold mt-1">3D + Arcade modes</div>
-                </div>
-              </div>
-              <span className="absolute top-3 left-3 soa-mono text-[10px] tracking-widest text-neutral-400">MISSION · GATE COURSE 01</span>
-              <span className="absolute bottom-3 left-3 soa-mono text-[10px] tracking-widest text-[#00C759]">PSYCHOMOTOR · FEEDS PROFILE</span>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* DRONABILITY CTA */}
-      <section className="max-w-7xl mx-auto px-6 py-16 md:py-24">
-        <div className="grid md:grid-cols-2 gap-10 items-center">
-          <div>
-            <div className="soa-mono text-[11px] tracking-widest text-[#0047FF]">SIGNATURE FEATURE</div>
-            <h2 className="soa-display text-3xl md:text-5xl font-extrabold tracking-tight mt-2">
-              Discover your<br />Dronability profile.
-            </h2>
-            <p className="text-lg text-[rgb(var(--soa-ink-2))] mt-4 max-w-lg">
-              Try spatial and attention activities, compare two practice attempts, and choose a starting track. Simulator feedback appears after you complete a mission.
-            </p>
-            <Link to="/assessment" className="soa-btn-primary mt-6 inline-flex">
-              Take the assessment <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-          <div className="relative">
-            <div className="soa-card p-6">
-              <div className="grid grid-cols-3 gap-3">
-                {["Spatial", "Attention", "Simulator"].map((d, i) => (
-                  <div key={d}>
-                    <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">{d.toUpperCase()}</div>
-                    <div className="h-24 bg-[rgb(var(--soa-bg))] mt-2 relative">
-                      <div
-                        className="absolute bottom-0 left-0 right-0 bg-[#0047FF]"
-                        style={{ height: `${[60, 75, 45][i]}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="border-t border-[rgb(var(--soa-line))] mt-4 pt-3 flex items-center justify-between">
-                <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">ILLUSTRATIVE PROFILE</div>
-                <div className="soa-mono text-[#0047FF] font-bold">Practice feedback</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
+ const { user } = useAuth();
+ return <div className="welcome">
+  <section className="welcome-hero"><div className="welcome-copy"><span className="welcome-eyebrow"><span/> A NEW WAY TO UNDERSTAND AUTONOMY</span>
+   <h1>Go from<br/>“how does it work?”<br/>to <em>“now I see.”</em></h1>
+   <p>Explore how autonomous systems sense, decide, and act. Build your understanding through guided lessons, experiments, and feedback that helps you move forward.</p>
+   <div className="welcome-actions"><Link to="/learn" data-testid="hero-start" className="soa-btn-primary">{user ? "Continue learning" : "Explore the foundations"}<ArrowRight size={17}/></Link><Link to="/learn/uncertainty" className="welcome-text-link">Try an experiment <ArrowUpRight size={16}/></Link></div>
+   <div className="welcome-small"><BookOpen size={15}/> Six guided lessons <span>·</span> Explore freely <span>·</span> Learn at your pace</div>
+  </div><AutonomyWorld/></section>
+  <section className="welcome-method" aria-label="How learning works">{[["01","Make a prediction","Start with what you think will happen."],["02","Try it for yourself","Change a variable. Watch the system respond."],["03","Explain what changed","Use feedback to deepen your understanding."]].map(([n,t,d])=><div key={n}><span>{n}</span><div><h2>{t}</h2><p>{d}</p></div></div>)}</section>
+  <section className="welcome-course"><div className="welcome-section-heading"><div><span className="welcome-eyebrow">YOUR STARTING POINT</span><h2>One foundation.<br/>A world of possibilities.</h2></div><p>No previous robotics experience needed. Follow a connected course, then go deeper into the topics that spark your curiosity.</p></div>
+   <div className="welcome-topics">{topics.map(([id,t,d,Icon],i)=><Link key={id} to={`/learn/${id}`}><div className="welcome-topic-top"><Icon size={23}/><span>0{i+1} / 06</span></div><h3>{t}</h3><p>{d}</p><span className="welcome-topic-link">Explore lesson <ArrowUpRight size={17}/></span></Link>)}</div>
+  </section>
+  <section className="welcome-paths"><div><span className="welcome-eyebrow">ROOM TO KEEP EXPLORING</span><h2>Follow your curiosity.</h2><p>Choose simpler explanations or deeper technical notes within the course. Your starting point is a preference, never a label on your potential.</p></div><div className="welcome-path-links"><Link to="/simulator"><Compass/><div><h3>Flight playground</h3><p>Explore movement and control in a coastal simulation.</p></div><ArrowUpRight/></Link><Link to="/tracks"><BookOpen/><div><h3>Topic library</h3><p>Browse the wider collection of autonomy lessons.</p></div><ArrowUpRight/></Link><Link to="/assessment"><CircleHelp/><div><h3>Dronability practice</h3><p>Optional spatial and attention activities. Practice feedback, not an aptitude verdict.</p></div><ArrowUpRight/></Link></div></section>
+  <section className="welcome-teaching"><Users size={30}/><div><span className="welcome-eyebrow">LEARN TOGETHER</span><h2>A clearer view of your classroom.</h2><p>Instructors can organise cohorts, share a course, and see where learners need another explanation.</p></div><Link to={user ? "/instructor" : "/login"} className="soa-btn-secondary">Instructor workspace <ArrowRight size={16}/></Link></section>
+ </div>;
 }

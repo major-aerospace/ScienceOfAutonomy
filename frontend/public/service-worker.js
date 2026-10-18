@@ -7,7 +7,7 @@
  * Designed for the visited-lessons offline-read MVP requirement.
  */
 
-const VERSION = "soa-v4";
+const VERSION = "soa-v5";
 const SHELL_CACHE = `${VERSION}-shell`;
 const API_CACHE = `${VERSION}-api`;
 const ASSET_CACHE = `${VERSION}-assets`;

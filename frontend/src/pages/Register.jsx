@@ -24,7 +24,7 @@ export default function Register() {
     setErr(""); setBusy(true);
     try {
       await register({ email, password, name });
-      nav("/onboarding");
+      nav("/learn");
     } catch (e) {
       setErr(formatApiErrorDetail(e.response?.data?.detail) || e.message);
     } finally { setBusy(false); }
@@ -32,10 +32,11 @@ export default function Register() {
 
   return (
     <div className="max-w-md mx-auto px-6 py-16">
-      <div className="soa-mono text-[11px] tracking-widest text-[rgb(var(--soa-ink-3))]">NEW · OPERATOR</div>
+      <div className="soa-mono text-[11px] tracking-widest text-[rgb(var(--soa-ink-3))]">START YOUR LEARNING JOURNEY</div>
       <h1 className="soa-display text-4xl font-black tracking-tight mt-2">Create account</h1>
-      <p className="text-sm text-[rgb(var(--soa-ink-2))] mt-2">Track progress, earn XP, unlock adaptive paths.</p>
+      <p className="text-sm text-[rgb(var(--soa-ink-2))] mt-2">Save your course progress and join your instructor’s cohort.</p>
 
+      {process.env.REACT_APP_GOOGLE_AUTH_ENABLED === "true" && <>
       <button
         type="button"
         data-testid="google-signup-button"
@@ -51,9 +52,11 @@ export default function Register() {
         <div className="flex-1 h-px bg-[rgb(var(--soa-line))]" />
       </div>
 
+      </>}
+      <p className="text-sm mt-6 mb-5 leading-relaxed">Preview edition: use a test account. <Link to="/about-learning" className="underline">How your learning data is used</Link>.</p>
       <form onSubmit={submit} className="space-y-4">
         <div>
-          <label htmlFor="name" className="soa-label">Name</label>
+          <label htmlFor="name" className="soa-label">Display name</label>
           <input id="name" autoComplete="name" data-testid={TID.authName} required value={name} onChange={(e) => setName(e.target.value)} className="soa-input mt-1" />
         </div>
         <div>
@@ -64,7 +67,7 @@ export default function Register() {
           <label htmlFor="password" className="soa-label">Password (≥ 6 chars)</label>
           <input id="password" autoComplete="new-password" data-testid={TID.authPassword} type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className="soa-input mt-1" />
         </div>
-        {err && <div data-testid={TID.authError} className="text-sm text-[#FF3B30] soa-mono">{err}</div>}
+        {err && <div role="alert" data-testid={TID.authError} className="text-sm text-[#FF3B30] soa-mono">{err}</div>}
         <button data-testid={TID.authSubmit} disabled={busy} className="soa-btn-primary w-full justify-center">
           {busy ? "Creating…" : "Create account"}
         </button>

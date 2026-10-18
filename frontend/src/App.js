@@ -4,6 +4,10 @@ import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { ThemeProvider } from "@/lib/theme";
 
+import LearningHub from "@/pages/LearningHub";
+import LearningLesson from "@/pages/LearningLesson";
+import Instructor from "@/pages/Instructor";
+import AboutLearning from "@/pages/AboutLearning";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
@@ -36,9 +40,13 @@ function Shell() {
   return (
     <div className="min-h-screen flex flex-col">
       <Nav />
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/learn" element={<LearningHub />} />
+          <Route path="/learn/:lessonId" element={<LearningLesson />} />
+          <Route path="/instructor" element={<ProtectedRoute><Instructor /></ProtectedRoute>} />
+          <Route path="/about-learning" element={<AboutLearning />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/tracks" element={<Tracks />} />

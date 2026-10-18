@@ -3,273 +3,34 @@ import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { TID } from "@/lib/tids";
-import {
-  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
-} from "recharts";
 import MentalRotation from "@/components/assessment/MentalRotation";
 import Vigilance from "@/components/assessment/Vigilance";
 import Trainability from "@/components/assessment/Trainability";
-import { toast } from "sonner";
-import { ChevronDown, HelpCircle } from "lucide-react";
-
+import { ArrowRight, CheckCircle2, Shapes, Focus, MousePointer2 } from "lucide-react";
 const STAGES = ["intro", "mr", "vig", "train1", "interlude", "train2", "result"];
-
-export default function Assessment() {
-  const { user } = useAuth();
-  const [stage, setStage] = useState("intro");
-  const [mr, setMr] = useState(0);    // perceptual_spatial 0..1
-  const [vig, setVig] = useState(0);  // attentional 0..1
-  const [t1, setT1] = useState(0);    // first trainability attempt time
-  const [result, setResult] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  const next = () => {
-    const idx = STAGES.indexOf(stage);
-    if (idx < STAGES.length - 1) setStage(STAGES[idx + 1]);
-  };
-
-  const submit = async (secondAttemptSeconds) => {
-    // Trainability slope = improvement: 1 if t2 < t1 (faster) by 30%+, scaled
-    const slope = t1 > 0 ? Math.max(-0.5, Math.min(1, (t1 - secondAttemptSeconds) / t1)) : 0;
-    // Pull psychomotor from real simulator runs if the user has any.
-    let psych = null;
-    let simDetails = null;
-    try {
-      const { data } = await api.get("/sim/psychomotor");
-      if (data && data.missions_completed > 0) {
-        psych = data.score;
-        simDetails = data;
-      }
-    } catch { /* No measured simulator result is available. */ }
-    const higher = null;
-    const dispo = null;
-
-    const payload = {
-      perceptual_spatial: mr,
-      attentional: vig,
-      psychomotor: psych,
-      higher_order: higher,
-      dispositional: dispo,
-      trainability_slope: slope,
-    };
-
-    if (!user || user === false) {
-      setResult({ payload, simDetails, recommendedTrack: { trackId: "track-foundations", title: "Foundations of Flight & Autonomy", reason: "Start with foundations.", weakestDomain: "perceptual_spatial" } });
-      setStage("result");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const { data } = await api.post("/assessment/submit", payload);
-      setResult({ payload, simDetails, recommendedTrack: data.recommendedTrack });
-      setStage("result");
-    } catch (e) {
-      toast.error("Could not save assessment");
-    } finally { setSubmitting(false); }
-  };
-
-  return (
-    <div className="max-w-5xl mx-auto px-6 py-12">
-      <div className="soa-mono text-[11px] tracking-widest text-[#0047FF]">DRONABILITY · LITE</div>
-      <h1 className="soa-display text-4xl md:text-6xl font-black tracking-tighter mt-2">
-        Self-assessment
-      </h1>
-      <p className="text-[rgb(var(--soa-ink-2))] mt-2 max-w-2xl">
-        A short practice snapshot of your performance in these activities — <strong>not</strong> a clinical or selection test. The headline result is your <em>Trainability slope</em> — how fast you improve.
-      </p>
-
-      <div className="mt-8">
-        {stage === "intro" && <Intro onStart={next} />}
-        {stage === "mr" && <MentalRotation onDone={(score) => { setMr(score); next(); }} />}
-        {stage === "vig" && <Vigilance onDone={(score) => { setVig(score); next(); }} />}
-        {stage === "train1" && <Trainability label="Attempt 1 of 2" onDone={(timeSec) => { setT1(timeSec); next(); }} />}
-        {stage === "interlude" && <Interlude onNext={next} />}
-        {submitting && <p role="status">Saving your result…</p>}
-        {stage === "train2" && !submitting && <Trainability label="Attempt 2 of 2" onDone={submit} />}
-        {stage === "result" && result && <Result result={result} />}
-      </div>
-    </div>
-  );
-}
-
-function Intro({ onStart }) {
-  return (
-    <div className="grid md:grid-cols-3 gap-4">
-      {[
-        { k: "01", t: "Mental rotation", d: "How quickly you transform shapes in your head." },
-        { k: "02", t: "Vigilance", d: "How long you sustain attention under monotony." },
-        { k: "03", t: "Trainability", d: "How much you improve when given a second try." },
-      ].map((s) => (
-        <div key={s.k} className="soa-card p-5">
-          <div className="soa-mono text-[10px] tracking-widest text-[#0047FF]">TASK · {s.k}</div>
-          <div className="soa-display text-xl font-bold mt-1">{s.t}</div>
-          <div className="text-sm text-[rgb(var(--soa-ink-2))] mt-1">{s.d}</div>
-        </div>
-      ))}
-      <div className="md:col-span-3 mt-2">
-        <button data-testid={TID.assessStart} onClick={onStart} className="soa-btn-primary">Begin · ~6 minutes</button>
-      </div>
-      <div className="md:col-span-3 mt-8">
-        <DronabilityFAQ />
-      </div>
-    </div>
-  );
-}
-
-const FAQ_ITEMS = [
-  {
-    q: "What is Dronability, exactly?",
-    a: "Dronability summarizes performance on spatial and attention activities, simulator runs when available, and change between two practice attempts. These activities are not a validated aptitude battery.",
-  },
-  {
-    q: "Is this a clinical test? An IQ test? A pilot selection test?",
-    a: "No. It is not clinical, diagnostic, or a screening tool. It is a self-assessment to help you choose where to start learning. Treat the result as a hint, not a verdict.",
-  },
-  {
-    q: "Why is 'Trainability' the headline result and not raw scores?",
-    a: "The result shows the change in your completion time between two attempts. It can reflect practice, task variation, or device conditions; it does not predict expert performance.",
-  },
-  {
-    q: "Can I retake it? Will the result change?",
-    a: "Yes. You can retake it any time. Trainability slope is expected to shift as you practise, especially after a few simulator missions or completed lessons. Retake every 2–4 weeks to see the trend.",
-  },
-  {
-    q: "What if I do badly on Mental Rotation or Vigilance?",
-    a: "It just means those domains are where you have the most room to grow. The platform recommends starting with the track that targets your weakest domain — that's where each minute of practice produces the most improvement.",
-  },
-  {
-    q: "Why does Psychomotor only update after I use the simulator?",
-    a: "Psychomotor skill is best measured by actual flying, not a mouse-click test. Once you complete simulator missions (Precision Hover, Pylon Slalom, etc.), your personal-best times flow into this domain automatically.",
-  },
-  {
-    q: "Is my data shared, sold or used for selection?",
-    a: "Signed-in results are stored against your account. Self-service account deletion is not available in this version. Review the published privacy information before creating an account.",
-  },
-  {
-    q: "What's the difference between this and a real flight medical or aptitude exam?",
-    a: "A real flight medical or aptitude exam is administered by a licensed examiner, uses standardized batteries (e.g. SHL/CASS, AMES), and carries legal weight. This is none of those — it is a free educational on-ramp.",
-  },
+const QUESTIONS = [
+ ["What does Dronability mean here?", "The white paper proposes a multidimensional framework for assessment and development. These short practice activities explore only a small part of that idea. They are not the complete framework or a validated aptitude test."],
+ ["What do my results tell me?", "They describe performance on these particular tasks. Device conditions, task familiarity, random variations, and concentration can affect the result. They do not measure a fixed ability or predict suitability for a role."],
+ ["Does a faster second attempt establish trainability?", "No. Two attempts show a difference in completion time. A defensible learning measure would require repeated comparable tasks, standardised instruction, retention checks, and validation."],
+ ["Which domains are not measured?", "Reasoning, disposition, and general psychomotor capability are not measured here. Flight playground times stay separate from these practice results."],
+ ["What should I learn next?", "Start with Autonomy Foundations or choose a topic that interests you. The course knowledge checks provide feedback tied to the concepts you have actually studied."],
+ ["Are results saved?", "Signed-in practice results are linked to your account. Guest results are available on this page until you leave. This preview has no self-service account deletion; use a test account. See About this edition for details."],
 ];
-
-function DronabilityFAQ() {
-  const [open, setOpen] = useState(0);
-  return (
-    <div data-testid="dronability-faq" className="soa-card p-6">
-      <div className="flex items-center gap-2">
-        <HelpCircle className="w-4 h-4 text-[#0047FF]" strokeWidth={1.5} />
-        <div className="soa-mono text-[10px] tracking-widest text-[#0047FF]">DRONABILITY · FAQ</div>
-      </div>
-      <h3 className="soa-display text-2xl font-bold mt-1">Questions before you start</h3>
-      <div className="mt-4 divide-y divide-[rgb(var(--soa-line))]">
-        {FAQ_ITEMS.map((it, i) => {
-          const isOpen = open === i;
-          return (
-            <div key={i} className="py-2" data-testid={`faq-item-${i}`}>
-              <button
-                onClick={() => setOpen(isOpen ? -1 : i)}
-                data-testid={`faq-toggle-${i}`}
-                className="w-full flex items-center justify-between gap-3 py-3 text-left"
-              >
-                <span className="font-semibold text-[rgb(var(--soa-ink))]">{it.q}</span>
-                <ChevronDown
-                  className={`w-4 h-4 shrink-0 text-[rgb(var(--soa-ink-3))] transition-transform ${isOpen ? "rotate-180" : ""}`}
-                  strokeWidth={1.5}
-                />
-              </button>
-              {isOpen && (
-                <div
-                  data-testid={`faq-answer-${i}`}
-                  className="pb-4 text-sm text-[rgb(var(--soa-ink-2))] leading-relaxed"
-                >
-                  {it.a}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function Interlude({ onNext }) {
-  return (
-    <div className="soa-card p-8 text-center">
-      <div className="soa-mono text-[10px] tracking-widest text-[#0047FF]">INTERLUDE</div>
-      <h3 className="soa-display text-2xl font-bold mt-2">Same task. Again.</h3>
-      <p className="text-[rgb(var(--soa-ink-2))] mt-2 max-w-md mx-auto">
-        We&apos;ll measure how much faster you get. That improvement is the most important signal in this assessment.
-      </p>
-      <button data-testid={TID.assessNext} onClick={onNext} className="soa-btn-primary mt-5">Try again</button>
-    </div>
-  );
-}
-
-function Result({ result }) {
-  const r = result.payload;
-  const data = [
-    { domain: "Spatial", v: r.perceptual_spatial },
-    { domain: "Attention", v: r.attentional },
-    { domain: "Psychomotor", v: r.psychomotor },
-    { domain: "Reasoning", v: r.higher_order },
-    { domain: "Disposition", v: r.dispositional },
-  ].filter((item) => item.v != null);
-  const slopePct = (r.trainability_slope * 100).toFixed(0);
-  const positive = r.trainability_slope >= 0;
-
-  return (
-    <div className="grid md:grid-cols-[1.1fr,1fr] gap-8">
-      <div className="soa-card p-6">
-        <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">PROFILE</div>
-        <p className="text-sm mt-2">Only completed activities are shown. Reasoning and disposition are not measured in this version.</p>
-        <div className="h-[320px] mt-2">
-          <ResponsiveContainer>
-            <RadarChart data={data}>
-              <PolarGrid stroke="#E5E5E5" />
-              <PolarAngleAxis dataKey="domain" tick={{ fontFamily: "JetBrains Mono", fontSize: 12 }} />
-              <PolarRadiusAxis angle={30} domain={[0, 1]} tick={{ fontFamily: "JetBrains Mono", fontSize: 9 }} />
-              <Radar dataKey="v" stroke="#0047FF" fill="#0047FF" fillOpacity={0.25} />
-            </RadarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-      <div>
-        <div className="soa-mono text-[10px] tracking-widest text-[#0047FF]">HEADLINE</div>
-        <div className="soa-display text-5xl font-black tracking-tighter mt-1">
-          {positive ? "+" : ""}{slopePct}% <span className="text-base soa-mono align-middle text-[rgb(var(--soa-ink-3))]">TRAINABILITY</span>
-        </div>
-        <p className="text-[rgb(var(--soa-ink-2))] mt-2">
-          {positive
-            ? "Your second attempt was at least as fast as your first. This reflects these two attempts only."
-            : "You didn't speed up this round. That's normal — try the full battery later."}
-        </p>
-
-        <div className="soa-card p-5 mt-5">
-          <div className="soa-mono text-[10px] tracking-widest text-[#0047FF]">RECOMMENDED TRACK</div>
-          <div className="soa-display text-xl font-bold mt-1">{result.recommendedTrack.title}</div>
-          <div className="text-sm text-[rgb(var(--soa-ink-2))] mt-1">{result.recommendedTrack.reason}</div>
-          <Link to={`/tracks/${result.recommendedTrack.trackId}`} className="soa-btn-primary mt-4 inline-flex">Open track</Link>
-        </div>
-
-        {result.simDetails && result.simDetails.missions_completed > 0 && (
-          <div className="soa-card p-5 mt-3" data-testid="psychomotor-from-sim">
-            <div className="soa-mono text-[10px] tracking-widest text-[#0047FF]">PSYCHOMOTOR · FROM SIMULATOR</div>
-            <div className="text-sm mt-1">
-              {result.simDetails.missions_completed} mission{result.simDetails.missions_completed > 1 ? "s" : ""} completed · score {(result.simDetails.score * 100).toFixed(0)}%
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
-              {result.simDetails.details.map((d) => (
-                <div key={d.mission} className="border border-[rgb(var(--soa-line))] p-2 rounded-sm">
-                  <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">{d.mission.toUpperCase()}</div>
-                  <div className="soa-mono text-sm font-bold mt-1">{d.best.toFixed(2)}s</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <button data-testid={TID.assessRetake} onClick={() => window.location.reload()} className="soa-btn-ghost mt-4">Retake</button>
-      </div>
-    </div>
-  );
+export default function Assessment() {
+ const {user}=useAuth(); const [stage,setStage]=useState("intro"); const [mr,setMr]=useState(0); const [vig,setVig]=useState(0); const [t1,setT1]=useState(0); const [result,setResult]=useState(null); const [saving,setSaving]=useState(false); const [saveError,setSaveError]=useState(""); const [saved,setSaved]=useState(false);
+ const next=()=>setStage(s=>STAGES[STAGES.indexOf(s)+1]);
+ const save=async (record)=>{if(!user)return;setSaving(true);setSaveError("");try{await api.post('/assessment/submit',record.payload);setSaved(true);}catch{setSaveError('Your result is shown below, but it could not be saved. Retry when your connection is available.');}finally{setSaving(false);}};
+ const finish=(t2)=>{const change=t1>0?(t1-t2)/t1:0;const record={t1,t2,change,payload:{perceptual_spatial:mr,attentional:vig,psychomotor:null,higher_order:null,dispositional:null,trainability_slope:Math.max(-1,Math.min(1,change))}};setResult(record);setStage('result');save(record);};
+ return <div className="max-w-5xl mx-auto px-6 py-12"><span className="welcome-eyebrow">DRONABILITY · OPTIONAL PRACTICE</span><h1 className="text-4xl md:text-5xl font-medium tracking-tight mt-4">A snapshot. A starting point.</h1><p className="mt-4 max-w-2xl text-[rgb(var(--soa-ink-2))] leading-relaxed">Explore spatial patterns, target detection, and two rounds of a pointing task. Notice what changes with practice, without turning a few scores into a label.</p><div className="practice-notice">These are learning activities, not a validated aptitude or selection test. You can start the course without taking them. <Link to="/learn" className="underline">Explore Autonomy Foundations</Link>.</div>
+ <div className="mt-8">
+ {stage==='intro'&&<><div className="grid md:grid-cols-3 gap-4">{[[Shapes,'Spatial patterns','Match a rotated 2D shape across six questions.'],[Focus,'Target detection','Respond to occasional targets in a short visual activity.'],[MousePointer2,'Repeated practice','Compare completion times over two pointing tasks.']].map(([Icon,title,description])=><div className="soa-card p-6" key={title}><Icon className="text-[rgb(var(--soa-primary))]"/><h2 className="text-xl mt-5">{title}</h2><p className="text-sm mt-2 leading-relaxed text-[rgb(var(--soa-ink-2))]">{description}</p></div>)}</div><button className="soa-btn-primary mt-6" data-testid={TID.assessStart} onClick={next}>Begin practice <ArrowRight size={16}/></button><div className="mt-10"><h2 className="text-2xl mb-5">Understand your results</h2>{QUESTIONS.map(([q,a],i)=><details key={q} className="border-b border-[rgb(var(--soa-line))] py-4" open={i===0}><summary className="cursor-pointer font-medium">{q}</summary><p className="mt-3 text-sm leading-relaxed text-[rgb(var(--soa-ink-2))]">{a}</p></details>)}</div></>}
+ {stage==='mr'&&<MentalRotation onDone={score=>{setMr(score);next();}}/>}
+ {stage==='vig'&&<Vigilance onDone={score=>{setVig(score);next();}}/>}
+ {stage==='train1'&&<Trainability label="Attempt 1 of 2" onDone={time=>{setT1(time);next();}}/>}
+ {stage==='interlude'&&<div className="soa-card p-8"><span className="welcome-eyebrow">PAUSE AND REFLECT</span><h2 className="text-3xl mt-3">What could you try differently?</h2><p className="mt-4 max-w-xl leading-relaxed">Notice whether you chased the pointer or watched for the next target. Try keeping your hand relaxed and looking ahead. The next set of target positions will differ, so a time change may reflect both practice and variation.</p><p className="mt-3 text-sm text-[rgb(var(--soa-ink-2))]">First attempt: {t1.toFixed(2)} seconds. There is no pass mark.</p><button data-testid={TID.assessNext} onClick={next} className="soa-btn-primary mt-6">Try again</button></div>}
+ {stage==='train2'&&<Trainability label="Attempt 2 of 2" onDone={finish}/>}
+ {stage==='result'&&result&&<><div className="grid md:grid-cols-2 gap-5"><div className="soa-card p-6"><span className="welcome-eyebrow">THIS SESSION</span><h2 className="text-2xl mt-3">Activity results</h2>{[['Shape matching',result.payload.perceptual_spatial],['Target detection score',result.payload.attentional]].map(([label,value])=><div className="mt-6" key={label}><div className="flex justify-between text-sm"><span>{label}</span><strong>{Math.round(value*100)}%</strong></div><div className="h-2 bg-[rgb(var(--soa-line))] rounded-full mt-2"><div className="h-full rounded-full bg-[rgb(var(--soa-primary))]" style={{width:`${value*100}%`}}/></div></div>)}<p className="text-xs leading-relaxed mt-6 text-[rgb(var(--soa-ink-2))]">Task scores, not population percentiles. Reasoning, disposition, and general psychomotor capability are not measured.</p></div><div className="soa-card p-6"><span className="welcome-eyebrow">CHANGE BETWEEN TWO ATTEMPTS</span><div className="text-5xl font-medium mt-4">{result.change>=0?'+':''}{(result.change*100).toFixed(0)}%</div><p className="mt-2 text-sm">{result.change>=0?'Reduction':'Increase'} in completion time{result.change<0?' (negative improvement)':''}</p><div className="grid grid-cols-2 gap-5 mt-6"><div><small>Attempt 1</small><div className="text-xl">{result.t1.toFixed(2)}s</div></div><div><small>Attempt 2</small><div className="text-xl">{result.t2.toFixed(2)}s</div></div></div><p className="text-xs mt-5 leading-relaxed text-[rgb(var(--soa-ink-2))]">Two attempts do not establish a learning curve or predict future performance.</p></div></div>
+ <div className="mt-5" aria-live="polite">{saving&&<p>Saving practice result…</p>}{saved&&<p className="flex items-center gap-2 text-sm"><CheckCircle2 size={16}/> Practice result saved to your account.</p>}{saveError&&<div role="alert"><p>{saveError}</p><button onClick={()=>save(result)} disabled={saving} className="soa-btn-secondary mt-3">Retry saving</button></div>}{!user&&<p className="text-sm">Guest result · not saved. <Link to="/login" className="underline">Sign in for future sessions</Link>.</p>}</div>
+ <div className="soa-card p-6 mt-7"><h2 className="text-2xl">Turn curiosity into understanding.</h2><p className="mt-2">Work through the foundations, experiment with a model, and use lesson feedback to choose what to revisit.</p><Link to="/learn" className="soa-btn-primary mt-5">Start learning <ArrowRight size={16}/></Link></div><button className="soa-btn-ghost mt-4" data-testid={TID.assessRetake} onClick={()=>{setStage('intro');setResult(null);setSaved(false);setSaveError('');}}>Practise again</button></>}
+ </div></div>;
 }

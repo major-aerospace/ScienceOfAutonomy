@@ -95,7 +95,7 @@ export default function Dashboard() {
 
       <div className="mt-12">
         <div className="flex items-center justify-between">
-          <h2 className="soa-display text-2xl md:text-3xl font-bold">Continue learning</h2>
+          <h2 className="soa-display text-2xl md:text-3xl font-bold">Topic library activity</h2>
           <Link to="/tracks" className="soa-btn-ghost">All tracks</Link>
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
@@ -112,6 +112,7 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <div className="soa-card p-6 mt-8"><h2 className="text-2xl">Your guided course</h2><p className="mt-2">Autonomy Foundations progress and cohort membership are on your learning page.</p><Link to="/learn" className="soa-btn-primary mt-4">Continue Autonomy Foundations</Link></div>
       <BadgeShelf />
 
       <div className="mt-12">

@@ -23,7 +23,7 @@ export default function Login() {
     setErr(""); setBusy(true);
     try {
       await login(email, password);
-      nav("/dashboard");
+      nav("/learn");
     } catch (e) {
       setErr(formatApiErrorDetail(e.response?.data?.detail) || e.message);
     } finally { setBusy(false); }
@@ -31,10 +31,11 @@ export default function Login() {
 
   return (
     <div className="max-w-md mx-auto px-6 py-16">
-      <div className="soa-mono text-[11px] tracking-widest text-[rgb(var(--soa-ink-3))]">RETURN · OPERATOR</div>
+      <div className="soa-mono text-[11px] tracking-widest text-[rgb(var(--soa-ink-3))]">WELCOME BACK</div>
       <h1 className="soa-display text-4xl font-black tracking-tight mt-2">Sign in</h1>
-      <p className="text-sm text-[rgb(var(--soa-ink-2))] mt-2">Resume your progress. XP & streaks are saved.</p>
+      <p className="text-sm text-[rgb(var(--soa-ink-2))] mt-2">Pick up your course and keep exploring.</p>
 
+      {process.env.REACT_APP_GOOGLE_AUTH_ENABLED === "true" && <>
       <button
         type="button"
         data-testid="google-signin-button"
@@ -50,6 +51,8 @@ export default function Login() {
         <div className="flex-1 h-px bg-[rgb(var(--soa-line))]" />
       </div>
 
+      </>}
+      <p className="text-sm mt-6 mb-5 leading-relaxed">Preview edition: use a test account. <Link to="/about-learning" className="underline">How your learning data is used</Link>.</p>
       <form onSubmit={submit} className="space-y-4">
         <div>
           <label htmlFor="email" className="soa-label">Email</label>
@@ -59,7 +62,7 @@ export default function Login() {
           <label htmlFor="password" className="soa-label">Password</label>
           <input id="password" autoComplete="current-password" data-testid={TID.authPassword} type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="soa-input mt-1" />
         </div>
-        {err && <div data-testid={TID.authError} className="text-sm text-[#FF3B30] soa-mono">{err}</div>}
+        {err && <div role="alert" data-testid={TID.authError} className="text-sm text-[#FF3B30] soa-mono">{err}</div>}
         <button data-testid={TID.authSubmit} disabled={busy} className="soa-btn-primary w-full justify-center">
           {busy ? "Signing in…" : "Sign in"}
         </button>
@@ -70,7 +73,7 @@ export default function Login() {
         <Link data-testid={TID.authSwitch} to="/register" className="text-[#0047FF] underline underline-offset-2">Create an account</Link>
       </div>
       <div className="mt-2 text-sm text-[rgb(var(--soa-ink-3))]">
-        Or <Link to="/tracks" className="underline underline-offset-2">explore as guest</Link>.
+        Or <Link to="/learn" className="underline underline-offset-2">explore as guest</Link>.
       </div>
     </div>
   );

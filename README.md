@@ -1,6 +1,8 @@
 # Science of Autonomy
 
-Interactive learning app: React frontend, FastAPI backend, MongoDB. The repository contains 10 tracks and 46 seed lessons. Assessments are practice feedback, not validated aptitude or selection measures.
+Online learning application: React frontend, FastAPI backend, MongoDB. Version 0.3 adds Autonomy Foundations: six guided lessons, three explanation depths, interactive models, formative checks, saved attempts, and instructor cohorts. The existing 10-track, 46-lesson topic library and flight playground remain available. Assessments are practice feedback, not validated aptitude or selection measures.
+
+See [the version history](VERSIONS.md) and [the online preview guide](docs/ONLINE-PREVIEW.md). Offline lab packaging is deferred.
 
 ## Local setup
 
@@ -39,10 +41,18 @@ The unit suite uses an in-memory Mongo substitute. It cannot certify real Mongo 
 ## Deployment gates
 
 - Select host, domain, Mongo database, backups, rollback procedure, and secret storage.
-- Verify Google login on the final HTTPS domain. Current login uses Emergent-managed OAuth, not a configured standalone Google OAuth client. Do not assume that preview authentication works after moving hosts.
-- Publish accurate privacy/data-retention information and establish an account-deletion process. Review third-party scripts in `frontend/public/index.html`.
+- Email/password sign-in is the default. Google login is hidden unless the frontend is built with `REACT_APP_GOOGLE_AUTH_ENABLED=true`. Before enabling it, verify the Emergent-managed OAuth flow on the final HTTPS domain. It is not a configured standalone Google OAuth client.
+- Publish accurate privacy/data-retention information and establish an account-deletion process. The analytics script has been removed; review all remaining external resources and the optional authentication provider before launch.
 - Add gateway/API abuse controls, operational monitoring, and a real database readiness check.
 - Reconcile custom lessons across search, recommendations, Studio, certificate eligibility, and track counts before advertising complete CMS support.
 - Confirm accessibility, low-end mobile performance, WebGL fallback, and end-to-end learner flow on the target host.
 
 No course exclusion threshold or entitlement policy is implemented by this review.
+
+## Guided course and instructors
+
+`/learn` is the course hub and `/learn/:lessonId` is the guided lesson. Guests can explore; account holders can submit and save formative checks. `/instructor` requires the `instructor` or `admin` role. An administrator can enable instructor access for an existing account from that workspace. Instructors create their own cohorts and share the generated join code. Learners join from `/learn`; instructors see only their own cohorts, while administrators can see all cohorts.
+
+`POST /api/lab/attempts` requires `content_version: "foundations-1"` and receives answer indices, optional predictions/reflections, explanation mode and uncertainty experiment settings. The server validates and grades answers against `foundations-1`, storing append-only attempts. Course progress is derived from these records. Both checks must be correct to complete a lesson; a later lower result does not erase earlier completion. This is an open-book learning check, not a secure examination.
+
+The API namespace `lab` is retained for course/cohort records; this release is the online edition. It does not imply an offline deployment or 90-client capacity certification.

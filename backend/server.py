@@ -31,6 +31,7 @@ from auth import (
 from seed_data import TRACKS, LESSONS, all_lessons_list
 from glossary import GLOSSARY, search_glossary
 from badges import BADGES, BADGE_MAP, evaluate_badges
+from lab import create_lab_router, create_lab_indexes
 
 # --------------------------------------------------------------------------------------
 # DB
@@ -1179,6 +1180,7 @@ async def sim_leaderboard(mission: str = "gate-course-1", limit: int = Query(def
 # --------------------------------------------------------------------------------------
 @app.on_event("startup")
 async def on_startup():
+    await create_lab_indexes(db)
     await db.users.create_index("email", unique=True)
     await db.progress.create_index([("user_id", 1), ("lesson_id", 1)], unique=True)
     await db.assessments.create_index("user_id")
@@ -1216,6 +1218,7 @@ async def on_shutdown():
     client.close()
 
 
+api.include_router(create_lab_router(lambda: db))
 app.include_router(api)
 
 app.add_middleware(

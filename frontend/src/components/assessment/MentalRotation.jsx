@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { TID } from "@/lib/tids";
 
 // Mental rotation: show a 3D-ish shape and ask which option is the same shape rotated.
@@ -74,6 +74,9 @@ export default function MentalRotation({ onDone }) {
   const [idx, setIdx] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [last, setLast] = useState(null);
+  const answering = useRef(false);
+  const advanceTimer = useRef(null);
+  useEffect(() => () => clearTimeout(advanceTimer.current), []);
 
   if (idx >= TRIALS) {
     const score = correct / TRIALS;
@@ -88,10 +91,16 @@ export default function MentalRotation({ onDone }) {
 
   const t = trials[idx];
   const pick = (i) => {
+    if (answering.current) return;
+    answering.current = true;
     const isOk = i === t.correctIndex;
     setLast(isOk);
     if (isOk) setCorrect((c) => c + 1);
-    setTimeout(() => { setLast(null); setIdx((x) => x + 1); }, 400);
+    advanceTimer.current = setTimeout(() => {
+      setLast(null);
+      setIdx((x) => x + 1);
+      answering.current = false;
+    }, 400);
   };
 
   return (
@@ -110,6 +119,8 @@ export default function MentalRotation({ onDone }) {
           <button
             key={i}
             data-testid={TID.mrChoice(i)}
+            aria-label={`Matching rotation option ${i + 1}`}
+            disabled={last != null}
             onClick={() => pick(i)}
             className={`soa-card p-4 grid place-items-center transition-all ${last != null ? "" : "hover:-translate-y-1"}`}
           >

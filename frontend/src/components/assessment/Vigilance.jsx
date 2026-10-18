@@ -13,64 +13,101 @@ export default function Vigilance({ onDone }) {
   const [misses, setMisses] = useState(0);
   const [falseAlarms, setFalseAlarms] = useState(0);
   const [totalTargets, setTotalTargets] = useState(0);
+  const [finished, setFinished] = useState(false);
+  const [targetPosition, setTargetPosition] = useState({ x: 50, y: 50 });
+  const activeRef = useRef(false);
+  const visibleRef = useRef(false);
   const targetTimerRef = useRef(null);
+  const hideTimerRef = useRef(null);
+  const finishTimerRef = useRef(null);
+  const clockRef = useRef(null);
+  const startedAtRef = useRef(0);
   const hitsRef = useRef(0);
   const falseRef = useRef(0);
   const totalRef = useRef(0);
   const onDoneRef = useRef(onDone);
 
   useEffect(() => { onDoneRef.current = onDone; }, [onDone]);
-  useEffect(() => { hitsRef.current = hits; }, [hits]);
-  useEffect(() => { falseRef.current = falseAlarms; }, [falseAlarms]);
-  useEffect(() => { totalRef.current = totalTargets; }, [totalTargets]);
+
+  const clearTimers = useCallback(() => {
+    clearTimeout(targetTimerRef.current);
+    clearTimeout(hideTimerRef.current);
+    clearInterval(clockRef.current);
+  }, []);
 
   const end = useCallback(() => {
+    if (!activeRef.current) return;
+    activeRef.current = false;
+    visibleRef.current = false;
+    clearTimers();
     setRunning(false);
+    setFinished(true);
+    setTargetVisible(false);
+    setTimeLeft(0);
     const t = totalRef.current;
-    const score = t === 0 ? 0.5 : Math.max(0, Math.min(1, (hitsRef.current - falseRef.current * 0.5) / Math.max(1, t)));
-    setTimeout(() => onDoneRef.current(score), 600);
-  }, []);
+    const score = Math.max(0, Math.min(1, (hitsRef.current - falseRef.current * 0.5) / Math.max(1, t)));
+    finishTimerRef.current = setTimeout(() => onDoneRef.current(score), 600);
+  }, [clearTimers]);
+
+  useEffect(() => () => {
+    activeRef.current = false;
+    clearTimers();
+    clearTimeout(finishTimerRef.current);
+  }, [clearTimers]);
 
   useEffect(() => {
     if (!running) return;
-    const id = setInterval(() => {
-      setTimeLeft((t) => {
-        if (t <= 0) { clearInterval(id); end(); return 0; }
-        return t - 1;
-      });
-    }, 1000);
+    clockRef.current = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil(DURATION_S - (performance.now() - startedAtRef.current) / 1000));
+      setTimeLeft(remaining);
+      if (remaining === 0) end();
+    }, 250);
     // schedule random targets
     const scheduleNext = () => {
+      if (!activeRef.current) return;
       const delay = 2500 + Math.random() * 4500;
       targetTimerRef.current = setTimeout(() => {
+        if (!activeRef.current) return;
+        visibleRef.current = true;
         setTargetVisible(true);
-        setTotalTargets((n) => n + 1);
-        setTimeout(() => {
-          // if user didn't hit, count miss
-          setTargetVisible((v) => { if (v) setMisses((m) => m + 1); return false; });
+        setTargetPosition({ x: 20 + Math.random() * 60, y: 20 + Math.random() * 60 });
+        setTotalTargets(++totalRef.current);
+        hideTimerRef.current = setTimeout(() => {
+          if (!activeRef.current) return;
+          if (visibleRef.current) setMisses(m => m + 1);
+          visibleRef.current = false;
+          setTargetVisible(false);
           scheduleNext();
         }, 900);
       }, delay);
     };
     scheduleNext();
-    return () => { clearInterval(id); if (targetTimerRef.current) clearTimeout(targetTimerRef.current); };
-  }, [running, end]);
+    return clearTimers;
+  }, [running, end, clearTimers]);
+
+  const begin = () => {
+    if (activeRef.current || finished) return;
+    activeRef.current = true;
+    startedAtRef.current = performance.now();
+    setRunning(true);
+  };
 
   const press = () => {
-    if (!running) return;
-    if (targetVisible) {
-      setHits((h) => h + 1);
+    if (!activeRef.current) return;
+    if (visibleRef.current) {
+      visibleRef.current = false;
+      setHits(++hitsRef.current);
       setTargetVisible(false);
     } else {
-      setFalseAlarms((f) => f + 1);
+      setFalseAlarms(++falseRef.current);
     }
   };
 
   return (
     <div className="soa-card p-6">
       <div className="flex items-center justify-between">
-        <div className="soa-mono text-[10px] tracking-widest text-[#0047FF]">VIGILANCE · WATCH FOR THE BLIP</div>
-        <div className="soa-mono text-[11px] text-[rgb(var(--soa-ink-3))]">{running ? `${timeLeft}s left` : "Ready"}</div>
+        <div className="soa-mono text-[10px] tracking-widest text-[#0047FF]">ATTENTION PRACTICE · WATCH FOR THE BLIP</div>
+        <div className="soa-mono text-[11px] text-[rgb(var(--soa-ink-3))]">{running ? `${timeLeft}s left` : finished ? "Complete" : "Ready"}</div>
       </div>
       <div className="mt-4 bg-neutral-950 rounded-sm h-[260px] relative overflow-hidden">
         {/* Radar */}
@@ -87,8 +124,8 @@ export default function Vigilance({ onDone }) {
               <div
                 className="absolute w-4 h-4 rounded-full bg-[#FF3B30]"
                 style={{
-                  left: `${20 + Math.random() * 60}%`,
-                  top: `${20 + Math.random() * 60}%`,
+                  left: `${targetPosition.x}%`,
+                  top: `${targetPosition.y}%`,
                   boxShadow: "0 0 24px rgba(255,59,48,0.7)",
                 }}
               />
@@ -103,8 +140,8 @@ export default function Vigilance({ onDone }) {
         <div className="absolute bottom-3 right-3 soa-mono text-[10px] tracking-widest text-neutral-400">{totalTargets} TARGETS</div>
       </div>
       <div className="mt-4 flex justify-between items-center">
-        {!running ? (
-          <button onClick={() => setRunning(true)} className="soa-btn-primary" data-testid={TID.assessStart}>Start watch</button>
+        {finished ? <p role="status">Activity complete. Preparing your result…</p> : !running ? (
+          <button onClick={begin} className="soa-btn-primary" data-testid={TID.assessStart}>Start watch</button>
         ) : (
           <button data-testid={TID.vigilHit} onClick={press} className="soa-btn-primary">PRESS · TARGET</button>
         )}

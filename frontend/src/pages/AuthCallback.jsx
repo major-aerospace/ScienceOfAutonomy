@@ -40,7 +40,7 @@ export default function AuthCallback() {
         // Strip the session_id from the URL by replacing history before navigating
         window.history.replaceState({}, "", "/auth/callback");
         toast.success(`Welcome ${data.user.name}`);
-        nav(data.isNewUser ? "/onboarding" : "/dashboard", { replace: true });
+        nav("/learn", { replace: true });
       } catch (e) {
         toast.error("Could not complete Google sign-in.");
         nav("/login", { replace: true });
