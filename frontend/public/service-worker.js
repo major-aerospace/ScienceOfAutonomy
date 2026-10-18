@@ -7,7 +7,7 @@
  * Designed for the visited-lessons offline-read MVP requirement.
  */
 
-const VERSION = "soa-v2";
+const VERSION = "soa-v4";
 const SHELL_CACHE = `${VERSION}-shell`;
 const API_CACHE = `${VERSION}-api`;
 const ASSET_CACHE = `${VERSION}-assets`;
@@ -27,7 +27,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
-        keys.filter((k) => !k.startsWith(VERSION)).map((k) => caches.delete(k))
+        keys.filter((k) => k.startsWith("soa-") && !k.startsWith(VERSION)).map((k) => caches.delete(k))
       )
     ).then(() => self.clients.claim())
   );
@@ -45,11 +45,14 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
 
+  if (url.origin !== self.location.origin) return;
+
   // Only handle same-origin + same-protocol; skip cross-origin (fonts, gstatic etc.)
   // (Fonts from Google can still be cached opaquely if requested)
   if (isApi(url)) {
     // Cache lesson + tracks + social-clips for offline reading
-    if (/\/api\/(tracks|lessons|studio\/social-clips)/.test(url.pathname)) {
+    if (!req.headers.has("Authorization") &&
+        /^\/api\/(tracks|lessons\/[^/]+|studio\/social-clips)$/.test(url.pathname)) {
       event.respondWith(networkFirst(req, API_CACHE));
       return;
     }

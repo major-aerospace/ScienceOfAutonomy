@@ -5,7 +5,17 @@ import uuid
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://drone-science-learn.preview.emergentagent.com").rstrip("/")
+def completion_payload(session, api_url, lesson_id, correct=True):
+    response = session.get(f"{api_url}/lessons/{lesson_id}")
+    if response.status_code == 404:
+        return {"lesson_id": lesson_id, "answers": []}
+    response.raise_for_status()
+    quiz = response.json().get("quiz", [])
+    answers = [q["answer"] if correct else (q["answer"] + 1) % len(q["options"]) for q in quiz]
+    return {"lesson_id": lesson_id, "answers": answers}
+
+
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
 API = f"{BASE_URL}/api"
 
 
@@ -98,7 +108,7 @@ def test_recommend_guest_returns_foundations_first(s):
 
 # ---------- Recommend next: after completing l-autonomy-ladder ----------
 def test_recommend_after_completion(s, auth):
-    r = s.post(f"{API}/progress/complete", headers=auth, json={"lesson_id": "l-autonomy-ladder", "score": 1.0})
+    r = s.post(f"{API}/progress/complete", headers=auth, json=completion_payload(s, API, "l-autonomy-ladder", correct=True))
     assert r.status_code == 200, r.text
     r2 = s.get(f"{API}/recommend/next", headers=auth)
     assert r2.status_code == 200
@@ -116,7 +126,7 @@ def test_complete_with_low_score_creates_review_and_answer_flow(s, fresh_user):
     h = {"Authorization": f"Bearer {tok}", "Content-Type": "application/json"}
 
     # Complete with score < 1.0 → review row inserted
-    r = s.post(f"{API}/progress/complete", headers=h, json={"lesson_id": "l-pid", "score": 0.5})
+    r = s.post(f"{API}/progress/complete", headers=h, json=completion_payload(s, API, "l-pid", correct=False))
     assert r.status_code == 200
 
     # GET /review/queue — Phase 3 changed scheduling to now-1m for immediate review

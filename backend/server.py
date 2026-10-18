@@ -14,11 +14,12 @@ import httpx
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Literal
 
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, Request, Response, Header
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, Request, Response, Header, Query
 from fastapi.responses import StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from pydantic import BaseModel, Field, EmailStr
+from pymongo.errors import DuplicateKeyError
+from pydantic import BaseModel, Field, EmailStr, field_validator, StrictInt
 
 from auth import (
     hash_password,
@@ -49,6 +50,21 @@ class RegisterBody(BaseModel):
     goal: Optional[Literal["curious", "student", "operator", "professional"]] = "curious"
 
 
+    @field_validator("password")
+    @classmethod
+    def password_byte_limit(cls, value):
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("Password must be at most 72 UTF-8 bytes")
+        return value
+
+    @field_validator("name")
+    @classmethod
+    def nonblank_name(cls, value):
+        if not value.strip():
+            raise ValueError("Name must not be blank")
+        return value.strip()
+
+
 class LoginBody(BaseModel):
     email: EmailStr
     password: str
@@ -56,7 +72,8 @@ class LoginBody(BaseModel):
 
 class CompleteLessonBody(BaseModel):
     lesson_id: str
-    score: float = 0.0
+    answers: Optional[List[StrictInt]] = None
+    score: float = Field(default=0.0, ge=0, le=1, allow_inf_nan=False)
 
 
 class GoalUpdate(BaseModel):
@@ -65,12 +82,12 @@ class GoalUpdate(BaseModel):
 
 class AssessmentSubmit(BaseModel):
     # 0..1 normalized scores
-    perceptual_spatial: float
-    attentional: float
-    psychomotor: float
-    higher_order: float
-    dispositional: float
-    trainability_slope: float  # improvement delta, -1..1
+    perceptual_spatial: float = Field(ge=0, le=1, allow_inf_nan=False)
+    attentional: float = Field(ge=0, le=1, allow_inf_nan=False)
+    psychomotor: Optional[float] = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    higher_order: Optional[float] = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    dispositional: Optional[float] = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    trainability_slope: float = Field(ge=-1, le=1, allow_inf_nan=False)
 
 
 class ReviewAnswerBody(BaseModel):
@@ -100,7 +117,7 @@ class AdminLessonCreate(BaseModel):
 
 class SimScore(BaseModel):
     mission: str
-    time_sec: float = Field(gt=0)
+    time_sec: float = Field(gt=0, allow_inf_nan=False)
     gates_cleared: int = Field(ge=0)
 
 
@@ -127,7 +144,7 @@ def set_auth_cookie(response: Response, token: str):
         value=token,
         httponly=True,
         secure=True,
-        samesite="none",
+        samesite="lax",
         max_age=7 * 24 * 3600,
         path="/",
     )
@@ -250,7 +267,7 @@ async def login(body: LoginBody, response: Response):
 
 @api.post("/auth/logout")
 async def logout(response: Response):
-    response.delete_cookie("access_token", path="/")
+    response.delete_cookie("access_token", path="/", secure=True, httponly=True, samesite="lax")
     return {"ok": True}
 
 
@@ -433,34 +450,53 @@ async def complete_lesson(body: CompleteLessonBody, request: Request):
     if not l:
         raise HTTPException(404, "Lesson not found")
 
+    quiz = l.get("quiz") or []
+    answers = body.answers
+    if quiz:
+        if answers is None or len(answers) != len(quiz):
+            raise HTTPException(422, "Submit one answer index for each quiz question")
+        if any(answer < 0 or answer >= len(question.get("options", []))
+               for answer, question in zip(answers, quiz)):
+            raise HTTPException(422, "Answer index is outside the question options")
+        score = sum(answer == question["answer"] for answer, question in zip(answers, quiz)) / len(quiz)
+    else:
+        if answers:
+            raise HTTPException(422, "This lesson has no quiz")
+        score = 0.0
+
     existing = await db.progress.find_one({"user_id": user["id"], "lesson_id": body.lesson_id})
     awarded = 0
     new_badges: list = []
     if not existing:
-        awarded = 25 + int(body.score * 15)  # base + quiz bonus
-        await db.progress.insert_one({
-            "user_id": user["id"],
-            "lesson_id": body.lesson_id,
-            "completed": True,
-            "score": body.score,
-            "completed_at": datetime.now(timezone.utc).isoformat(),
-        })
+        awarded = 25 + int(score * 15)  # base + quiz bonus
+        try:
+            await db.progress.insert_one({
+                "user_id": user["id"],
+                "lesson_id": body.lesson_id,
+                "completed": True,
+                "score": score,
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+            })
+        except DuplicateKeyError:
+            return {"ok": True, "xpAwarded": 0, "newBadges": []}
         # update user xp / streak
         today = datetime.now(timezone.utc).date().isoformat()
         last = user.get("last_active_day")
         streak = user.get("streak", 0)
-        if last is None or last != today:
-            streak = streak + 1 if last else 1
-        new_xp = user.get("xp", 0) + awarded
-        new_level = xp_to_level(new_xp)
+        if last != today:
+            yesterday = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
+            streak = streak + 1 if last == yesterday else 1
         await db.users.update_one(
             {"id": user["id"]},
-            {"$set": {"xp": new_xp, "level": new_level, "streak": streak, "last_active_day": today}},
+            {"$inc": {"xp": awarded},
+             "$set": {"streak": streak, "last_active_day": today}},
         )
+        fresh = await db.users.find_one({"id": user["id"]})
+        await db.users.update_one({"id": user["id"]}, {"$max": {"level": xp_to_level(fresh["xp"])}})
         # Spaced-repetition: if user missed any question, schedule a review.
         # We schedule the FIRST review slightly in the past so users see immediate
         # feedback on the dashboard "Spaced Repetition" card right after the lesson.
-        if body.score < 1.0:
+        if quiz and score < 1.0:
             await db.reviews.insert_one({
                 "id": str(uuid.uuid4()),
                 "user_id": user["id"],
@@ -470,6 +506,12 @@ async def complete_lesson(body: CompleteLessonBody, request: Request):
                 "created_at": datetime.now(timezone.utc).isoformat(),
             })
         new_badges = await _grant_badges(user["id"])
+    else:
+        # Retakes can improve mastery without granting repeat completion XP.
+        await db.progress.update_one(
+            {"user_id": user["id"], "lesson_id": body.lesson_id},
+            {"$max": {"score": score}},
+        )
     return {"ok": True, "xpAwarded": awarded, "newBadges": new_badges}
 
 
@@ -530,7 +572,7 @@ async def review_queue(request: Request):
     ).sort("next_review_at", 1).to_list(50)
     enriched = []
     for r in rows:
-        l = LESSONS.get(r["lesson_id"])
+        l = await _resolve_lesson(r["lesson_id"])
         if not l:
             continue
         enriched.append({
@@ -600,6 +642,7 @@ def _recommend_track(b: AssessmentSubmit) -> dict:
         "higher_order": b.higher_order,
         "dispositional": b.dispositional,
     }
+    scores = {key: value for key, value in scores.items() if value is not None}
     weakest = min(scores, key=scores.get)
     mapping = {
         "perceptual_spatial": ("track-foundations", "Build perspective and spatial intuition first."),
@@ -696,7 +739,7 @@ async def my_badges(request: Request):
 # Leaderboard
 # --------------------------------------------------------------------------------------
 @api.get("/leaderboard")
-async def leaderboard(metric: str = "xp", limit: int = 20):
+async def leaderboard(metric: str = "xp", limit: int = Query(default=20, ge=1, le=100)):
     if metric not in ("xp", "streak"):
         raise HTTPException(400, "metric must be xp or streak")
     rows = await db.users.find(
@@ -756,7 +799,7 @@ async def glossary(q: str = ""):
 
 
 @api.get("/search")
-async def search(q: str = "", limit: int = 12):
+async def search(q: str = "", limit: int = Query(default=12, ge=1, le=100)):
     """Global search across lessons, tracks and glossary."""
     if not q or len(q.strip()) < 2:
         return {"lessons": [], "tracks": [], "glossary": []}
@@ -1115,7 +1158,7 @@ async def sim_best(request: Request, mission: str = "gate-course-1"):
 
 
 @api.get("/sim/leaderboard")
-async def sim_leaderboard(mission: str = "gate-course-1", limit: int = 20):
+async def sim_leaderboard(mission: str = "gate-course-1", limit: int = Query(default=20, ge=1, le=100)):
     pipeline = [
         {"$match": {"mission": mission}},
         {"$sort": {"time_sec": 1}},
@@ -1144,9 +1187,13 @@ async def on_startup():
     await db.lesson_overrides.create_index("id", unique=True)
     await db.comments.create_index([("lesson_id", 1), ("created_at", -1)])
     await db.sim_runs.create_index([("user_id", 1), ("mission", 1), ("time_sec", 1)])
-    # seed admin
-    admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com").lower()
-    admin_pw = os.environ.get("ADMIN_PASSWORD", "admin123")
+    # Bootstrap only when an operator explicitly configures both credentials.
+    admin_email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+    admin_pw = os.environ.get("ADMIN_PASSWORD", "")
+    if not admin_email and not admin_pw:
+        return
+    if not admin_email or len(admin_pw) < 12 or len(admin_pw.encode("utf-8")) > 72:
+        raise RuntimeError("Admin bootstrap requires ADMIN_EMAIL and a 12-character, at most 72-byte password")
     existing = await db.users.find_one({"email": admin_email})
     if not existing:
         await db.users.insert_one({
@@ -1174,7 +1221,7 @@ app.include_router(api)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+    allow_origins=[origin.strip() for origin in os.environ.get("CORS_ORIGINS", "").split(",") if origin.strip()],
     allow_methods=["*"],
     allow_headers=["*"],
 )

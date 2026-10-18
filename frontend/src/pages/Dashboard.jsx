@@ -12,17 +12,30 @@ export default function Dashboard() {
   const [tracks, setTracks] = useState([]);
   const [recommend, setRecommend] = useState(null);
   const [reviewCount, setReviewCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    api.get("/progress").then(({ data }) => setProgress(data.progress || []));
-    api.get("/tracks").then(({ data }) => setTracks(data.tracks || []));
-    api.get("/recommend/next").then(({ data }) => setRecommend(data)).catch(() => {});
-    api.get("/review/queue").then(({ data }) => setReviewCount(data.count || 0)).catch(() => {});
+    let active = true;
+    Promise.all([api.get("/progress"), api.get("/tracks"), api.get("/recommend/next"), api.get("/review/queue")])
+      .then(([progressResponse, tracksResponse, nextResponse, reviewResponse]) => {
+        if (!active) return;
+        setProgress(progressResponse.data.progress || []);
+        setTracks(tracksResponse.data.tracks || []);
+        setRecommend(nextResponse.data);
+        setReviewCount(reviewResponse.data.count || 0);
+      }).catch(() => { if (active) setError(true); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, []);
 
   if (!user) return null;
-  const xpToNext = 100;
-  const lvlXp = (user.xp || 0) % xpToNext;
+  if (loading) return <p role="status" className="p-12">Loading your progress…</p>;
+  if (error) return <div role="alert" className="p-12"><p>Could not load your progress.</p><button className="soa-btn-primary mt-4" onClick={() => window.location.reload()}>Retry</button></div>;
+  const level = user.level || 1;
+  const levelStart = 25 * (level - 1) ** 2;
+  const xpToNext = 25 * level ** 2 - levelStart;
+  const lvlXp = Math.max(0, (user.xp || 0) - levelStart);
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
@@ -115,7 +128,7 @@ export default function Dashboard() {
                   <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">LESSON</div>
                   <div className="soa-display text-base font-bold mt-0.5">{p.lesson_id}</div>
                 </div>
-                <div className="soa-mono text-[11px] text-[#00C759]">PASSED · {(p.score * 100).toFixed(0)}%</div>
+                <div className="soa-mono text-[11px] text-[#00C759]">QUIZ · {(p.score * 100).toFixed(0)}%</div>
               </div>
             ))}
           </div>

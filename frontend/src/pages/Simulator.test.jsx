@@ -1,0 +1,21 @@
+import React, {act} from "react";
+import {createRoot} from "react-dom/client";
+import Simulator from "./Simulator";
+jest.mock("@react-three/fiber",()=>({Canvas:()=> <div>Flight world</div>,useFrame:jest.fn(),useThree:()=>({camera:{}})}));
+jest.mock("@/lib/auth",()=>({useAuth:()=>({user:false,refresh:jest.fn()})}));
+jest.mock("@/lib/api",()=>({api:{get:jest.fn(),post:jest.fn()}}));
+jest.mock("sonner",()=>({toast:jest.fn()}));
+test("launch, reset and mission changes keep objectives and timer in sync",async()=>{
+ global.IS_REACT_ACT_ENVIRONMENT=true;
+ const host=document.createElement("div");document.body.appendChild(host);const root=createRoot(host);
+ const click=async id=>act(async()=>host.querySelector(`[data-testid="${id}"]`).click());
+ await act(async()=>root.render(<Simulator/>));
+ expect(host.textContent).toContain("Your sky. Your pace.");
+ expect(host.querySelector('[data-testid="hud-gates"]').textContent).toContain("0 / 5");
+ await click("sim-start");expect(host.querySelector('[data-testid="sim-reset"]')).not.toBeNull();
+ await click("mission-pylon-slalom");expect(host.querySelector('[data-testid="hud-gates"]').textContent).toContain("0 / 6");
+ expect(host.querySelector('[data-testid="hud-flight-time"]').textContent).toContain("0.00s");
+ await click("sim-start");await click("sim-reset");expect(host.textContent).toContain("Your sky. Your pace.");
+ await click("mission-precision-hover");expect(host.querySelector('[data-testid="hud-hold"]').textContent).toContain("0.0 / 8s");
+ await act(async()=>root.unmount());host.remove();
+});

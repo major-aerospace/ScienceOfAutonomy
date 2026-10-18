@@ -3,6 +3,8 @@ import { CheckCircle2, XCircle } from "lucide-react";
 import { TID } from "@/lib/tids";
 
 export default function Quiz({ questions, onPass }) {
+  const [answers, setAnswers] = useState([]);
+  const [saving, setSaving] = useState(false);
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState(null);
   const [submitted, setSubmitted] = useState(false);
@@ -24,10 +26,14 @@ export default function Quiz({ questions, onPass }) {
         </p>
         <button
           data-testid={TID.lessonComplete}
-          onClick={() => onPass?.(pct)}
+          disabled={saving}
+          onClick={async () => {
+            setSaving(true);
+            try { await onPass?.(pct, answers); } finally { setSaving(false); }
+          }}
           className="soa-btn-primary mt-4"
         >
-          Complete lesson · +{Math.round(25 + pct * 15)} XP
+          Save completion
         </button>
       </div>
     );
@@ -36,7 +42,8 @@ export default function Quiz({ questions, onPass }) {
   const q = questions[idx];
 
   const submit = () => {
-    if (picked == null) return;
+    if (picked == null || submitted) return;
+    setAnswers((previous) => [...previous, picked]);
     setSubmitted(true);
     if (picked === q.answer) setCorrectCount((c) => c + 1);
   };

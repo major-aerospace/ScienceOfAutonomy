@@ -16,20 +16,29 @@ export default function Lesson() {
   const nav = useNavigate();
   const [lesson, setLesson] = useState(null);
   const tier = useTier();
+  const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
+    let active = true;
     setLesson(null);
-    api.get(`/lessons/${lessonId}`).then(({ data }) => setLesson(data)).catch(() => {});
-  }, [lessonId]);
+    setError("");
+    api.get(`/lessons/${lessonId}`).then(({ data }) => {
+      if (active) setLesson(data);
+    }).catch((e) => {
+      if (active) setError(e.response?.status === 404 ? "Lesson not found." : "Could not load this lesson. Check your connection and retry.");
+    });
+    return () => { active = false; };
+  }, [lessonId, retry]);
 
-  const complete = async (score) => {
+  const complete = async (score, answers = []) => {
     if (!user || user === false) {
       toast("Sign in to save progress and earn XP.", { description: "You can still browse as a guest." });
       if (lesson?.nextLessonId) nav(`/lessons/${lesson.nextLessonId}`);
       return;
     }
     try {
-      const { data } = await api.post("/progress/complete", { lesson_id: lessonId, score });
+      const { data } = await api.post("/progress/complete", { lesson_id: lessonId, answers });
       if (data?.xpAwarded) toast.success(`+${data.xpAwarded} XP earned`);
       if (data?.newBadges?.length) {
         data.newBadges.forEach((b) => toast.success(`Badge unlocked: ${b.replace(/-/g, " ")}`, { duration: 4000 }));
@@ -42,6 +51,7 @@ export default function Lesson() {
     }
   };
 
+  if (error) return <div className="p-12" role="alert"><p>{error}</p><button className="soa-btn-primary mt-4" onClick={() => setRetry((n) => n + 1)}>Retry</button><Link className="soa-btn-ghost" to="/tracks">Browse tracks</Link></div>;
   if (!lesson) return <div className="p-12 soa-mono text-sm">LOADING LESSON…</div>;
 
   // Use the reactive tier hook so the page updates immediately when the selector changes
@@ -90,7 +100,7 @@ export default function Lesson() {
           </div>
         ))}
 
-        <Quiz questions={lesson.quiz} onPass={complete} />
+        {lesson.quiz?.length ? <Quiz key={lesson.id} questions={lesson.quiz} onPass={complete} /> : <button className="soa-btn-primary" onClick={() => complete(0)}>Complete lesson</button>}
 
         {lesson.socialClip && (
           <div className="soa-card p-5">

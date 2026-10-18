@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -20,7 +20,6 @@ export default function Assessment() {
   const [mr, setMr] = useState(0);    // perceptual_spatial 0..1
   const [vig, setVig] = useState(0);  // attentional 0..1
   const [t1, setT1] = useState(0);    // first trainability attempt time
-  const [t2, setT2] = useState(0);    // second
   const [result, setResult] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -29,21 +28,21 @@ export default function Assessment() {
     if (idx < STAGES.length - 1) setStage(STAGES[idx + 1]);
   };
 
-  const submit = async () => {
+  const submit = async (secondAttemptSeconds) => {
     // Trainability slope = improvement: 1 if t2 < t1 (faster) by 30%+, scaled
-    const slope = t1 > 0 ? Math.max(-0.5, Math.min(1, (t1 - t2) / t1)) : 0;
+    const slope = t1 > 0 ? Math.max(-0.5, Math.min(1, (t1 - secondAttemptSeconds) / t1)) : 0;
     // Pull psychomotor from real simulator runs if the user has any.
-    let psych = 0.6;
+    let psych = null;
     let simDetails = null;
     try {
       const { data } = await api.get("/sim/psychomotor");
       if (data && data.missions_completed > 0) {
-        psych = Math.max(0.1, data.score);
+        psych = data.score;
         simDetails = data;
       }
-    } catch { /* psychomotor stays at default 0.6 */ }
-    const higher = 0.55;
-    const dispo = 0.7;
+    } catch { /* No measured simulator result is available. */ }
+    const higher = null;
+    const dispo = null;
 
     const payload = {
       perceptual_spatial: mr,
@@ -76,7 +75,7 @@ export default function Assessment() {
         Self-assessment
       </h1>
       <p className="text-[rgb(var(--soa-ink-2))] mt-2 max-w-2xl">
-        A short, science-grounded snapshot of how you currently learn — <strong>not</strong> a clinical or selection test. The headline result is your <em>Trainability slope</em> — how fast you improve.
+        A short practice snapshot of your performance in these activities — <strong>not</strong> a clinical or selection test. The headline result is your <em>Trainability slope</em> — how fast you improve.
       </p>
 
       <div className="mt-8">
@@ -85,7 +84,8 @@ export default function Assessment() {
         {stage === "vig" && <Vigilance onDone={(score) => { setVig(score); next(); }} />}
         {stage === "train1" && <Trainability label="Attempt 1 of 2" onDone={(timeSec) => { setT1(timeSec); next(); }} />}
         {stage === "interlude" && <Interlude onNext={next} />}
-        {stage === "train2" && <Trainability label="Attempt 2 of 2" onDone={(timeSec) => { setT2(timeSec); submit(); }} />}
+        {submitting && <p role="status">Saving your result…</p>}
+        {stage === "train2" && !submitting && <Trainability label="Attempt 2 of 2" onDone={submit} />}
         {stage === "result" && result && <Result result={result} />}
       </div>
     </div>
@@ -119,7 +119,7 @@ function Intro({ onStart }) {
 const FAQ_ITEMS = [
   {
     q: "What is Dronability, exactly?",
-    a: "Dronability is a short, science-grounded snapshot of how you currently learn skills relevant to operating autonomous systems. It measures four domains: spatial reasoning, sustained attention, motor learning (via the simulator), and how fast you improve with practice.",
+    a: "Dronability summarizes performance on spatial and attention activities, simulator runs when available, and change between two practice attempts. These activities are not a validated aptitude battery.",
   },
   {
     q: "Is this a clinical test? An IQ test? A pilot selection test?",
@@ -127,7 +127,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Why is 'Trainability' the headline result and not raw scores?",
-    a: "Decades of motor-learning research show that the slope of improvement is a better predictor of expert performance than first-attempt scores. Someone who is 'bad but improving fast' usually beats someone who is 'good but plateaued'.",
+    a: "The result shows the change in your completion time between two attempts. It can reflect practice, task variation, or device conditions; it does not predict expert performance.",
   },
   {
     q: "Can I retake it? Will the result change?",
@@ -143,7 +143,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Is my data shared, sold or used for selection?",
-    a: "No. Your scores are stored against your account so you can see your trend over time. They are never shared with employers, schools, or any third party. You can delete your account and all data at any time.",
+    a: "Signed-in results are stored against your account. Self-service account deletion is not available in this version. Review the published privacy information before creating an account.",
   },
   {
     q: "What's the difference between this and a real flight medical or aptitude exam?",
@@ -213,7 +213,7 @@ function Result({ result }) {
     { domain: "Psychomotor", v: r.psychomotor },
     { domain: "Reasoning", v: r.higher_order },
     { domain: "Disposition", v: r.dispositional },
-  ];
+  ].filter((item) => item.v != null);
   const slopePct = (r.trainability_slope * 100).toFixed(0);
   const positive = r.trainability_slope >= 0;
 
@@ -221,6 +221,7 @@ function Result({ result }) {
     <div className="grid md:grid-cols-[1.1fr,1fr] gap-8">
       <div className="soa-card p-6">
         <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">PROFILE</div>
+        <p className="text-sm mt-2">Only completed activities are shown. Reasoning and disposition are not measured in this version.</p>
         <div className="h-[320px] mt-2">
           <ResponsiveContainer>
             <RadarChart data={data}>
@@ -239,7 +240,7 @@ function Result({ result }) {
         </div>
         <p className="text-[rgb(var(--soa-ink-2))] mt-2">
           {positive
-            ? "You improved with practice — that's the strongest signal in this assessment."
+            ? "Your second attempt was at least as fast as your first. This reflects these two attempts only."
             : "You didn't speed up this round. That's normal — try the full battery later."}
         </p>
 

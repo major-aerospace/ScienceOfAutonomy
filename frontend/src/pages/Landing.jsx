@@ -35,7 +35,7 @@ export default function Landing() {
               <span className="text-[rgb(var(--soa-primary))]">design&nbsp;it.</span>
             </h1>
             <p className="text-lg md:text-xl text-[rgb(var(--soa-ink-2))] mt-8 max-w-xl leading-relaxed">
-              Bite-sized lessons. A 3D flight simulator. A scientifically-grounded self-assessment. One platform, no brand placement.
+              Bite-sized lessons. A 3D flight simulator. Practice activities with personal feedback. One platform, no brand placement.
             </p>
             <div className="mt-10 flex flex-wrap gap-3">
               <Link to="/simulator" data-testid={TID.heroStart} className="soa-btn-primary">
@@ -78,7 +78,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6 py-12 grid md:grid-cols-3 gap-10">
           {[
             { k: "01", t: "Learn", d: "10 vendor-neutral tracks. Every lesson is a model, a graph or a sim — never a paragraph." },
-            { k: "02", t: "Assess", d: "A 5-domain Dronability profile with a Trainability slope you can grow over time." },
+            { k: "02", t: "Assess", d: "Spatial and attention activities, simulator feedback, and change between practice attempts." },
             { k: "03", t: "Fly", d: "A built-in 3D drone simulator. Your gate-course time feeds your psychomotor score." },
           ].map((s, i) => (
             <motion.div
@@ -185,7 +185,7 @@ export default function Landing() {
               Discover your<br />Dronability profile.
             </h2>
             <p className="text-lg text-[rgb(var(--soa-ink-2))] mt-4 max-w-lg">
-              A short, science-grounded self-assessment across five cognitive domains — plus your Trainability slope: how fast you improve with practice.
+              Try spatial and attention activities, compare two practice attempts, and choose a starting track. Simulator feedback appears after you complete a mission.
             </p>
             <Link to="/assessment" className="soa-btn-primary mt-6 inline-flex">
               Take the assessment <ArrowRight className="w-4 h-4" />
@@ -193,22 +193,22 @@ export default function Landing() {
           </div>
           <div className="relative">
             <div className="soa-card p-6">
-              <div className="grid grid-cols-5 gap-3">
-                {["Spatial", "Attention", "Psychomotor", "Reasoning", "Disposition"].map((d) => (
+              <div className="grid grid-cols-3 gap-3">
+                {["Spatial", "Attention", "Simulator"].map((d, i) => (
                   <div key={d}>
                     <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">{d.toUpperCase()}</div>
                     <div className="h-24 bg-[rgb(var(--soa-bg))] mt-2 relative">
                       <div
                         className="absolute bottom-0 left-0 right-0 bg-[#0047FF]"
-                        style={{ height: `${30 + Math.random() * 60}%` }}
+                        style={{ height: `${[60, 75, 45][i]}%` }}
                       />
                     </div>
                   </div>
                 ))}
               </div>
               <div className="border-t border-[rgb(var(--soa-line))] mt-4 pt-3 flex items-center justify-between">
-                <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">TRAINABILITY SLOPE</div>
-                <div className="soa-mono text-[#0047FF] font-bold">+0.42 / session</div>
+                <div className="soa-mono text-[10px] tracking-widest text-[rgb(var(--soa-ink-3))]">ILLUSTRATIVE PROFILE</div>
+                <div className="soa-mono text-[#0047FF] font-bold">Practice feedback</div>
               </div>
             </div>
           </div>

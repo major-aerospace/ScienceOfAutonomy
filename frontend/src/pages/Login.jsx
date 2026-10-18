@@ -52,12 +52,12 @@ export default function Login() {
 
       <form onSubmit={submit} className="space-y-4">
         <div>
-          <label className="soa-label">Email</label>
-          <input data-testid={TID.authEmail} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="soa-input mt-1" />
+          <label htmlFor="email" className="soa-label">Email</label>
+          <input id="email" autoComplete="email" data-testid={TID.authEmail} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="soa-input mt-1" />
         </div>
         <div>
-          <label className="soa-label">Password</label>
-          <input data-testid={TID.authPassword} type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="soa-input mt-1" />
+          <label htmlFor="password" className="soa-label">Password</label>
+          <input id="password" autoComplete="current-password" data-testid={TID.authPassword} type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="soa-input mt-1" />
         </div>
         {err && <div data-testid={TID.authError} className="text-sm text-[#FF3B30] soa-mono">{err}</div>}
         <button data-testid={TID.authSubmit} disabled={busy} className="soa-btn-primary w-full justify-center">

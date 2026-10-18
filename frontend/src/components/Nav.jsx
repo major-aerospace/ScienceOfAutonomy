@@ -17,7 +17,7 @@ export default function Nav() {
   return (
     <header data-testid={TID.nav} className="sticky top-0 z-50 bg-white/85 backdrop-blur border-b border-[rgb(var(--soa-line))]">
       <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
-        <Link to="/" data-testid={TID.navLogo} className="flex items-center gap-2 group">
+        <Link to="/" data-testid={TID.navLogo} className="nav-brand flex items-center gap-2 group">
           <div className="relative w-8 h-8 grid place-items-center border-[1.5px] border-black">
             <Plane className="w-4 h-4" strokeWidth={1.75} />
             <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-[rgb(var(--soa-primary))] soa-pulse-dot" />
@@ -30,25 +30,9 @@ export default function Nav() {
           </div>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1">
-          <NavLink data-testid={TID.navLinkTracks} to="/tracks" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Curriculum</NavLink>
-          <NavLink data-testid="nav-link-simulator" to="/simulator" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Simulator</NavLink>
-          <NavLink data-testid={TID.navLinkAssessment} to="/assessment" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Dronability</NavLink>
-          <NavLink data-testid="nav-link-glossary" to="/glossary" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Glossary</NavLink>
-          <NavLink data-testid="nav-link-leaderboard" to="/leaderboard" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Leaderboard</NavLink>
-          <NavLink data-testid={TID.navLinkStudio} to="/studio" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Studio</NavLink>
-          {authed && (
-            <>
-              <NavLink data-testid="nav-link-review" to="/review" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Review</NavLink>
-              <NavLink data-testid={TID.navLinkDashboard} to="/dashboard" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Dashboard</NavLink>
-              {user.role === "admin" && (
-                <NavLink data-testid="nav-link-admin" to="/admin" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Admin</NavLink>
-              )}
-            </>
-          )}
-        </nav>
 
-        <div className="flex items-center gap-2">
+
+        <div className="nav-actions flex items-center gap-2">
           <CommandPalette />
           <button
             data-testid="theme-toggle"
@@ -76,6 +60,23 @@ export default function Nav() {
           )}
         </div>
       </div>
+        <nav className="nav-links flex items-center gap-1">
+          <NavLink data-testid={TID.navLinkTracks} to="/tracks" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Curriculum</NavLink>
+          <NavLink data-testid="nav-link-simulator" to="/simulator" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Simulator</NavLink>
+          <NavLink data-testid={TID.navLinkAssessment} to="/assessment" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Dronability</NavLink>
+          <NavLink data-testid="nav-link-glossary" to="/glossary" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Glossary</NavLink>
+          <NavLink data-testid="nav-link-leaderboard" to="/leaderboard" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Leaderboard</NavLink>
+          <NavLink data-testid={TID.navLinkStudio} to="/studio" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Studio</NavLink>
+          {authed && (
+            <>
+              <NavLink data-testid="nav-link-review" to="/review" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Review</NavLink>
+              <NavLink data-testid={TID.navLinkDashboard} to="/dashboard" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Dashboard</NavLink>
+              {user.role === "admin" && (
+                <NavLink data-testid="nav-link-admin" to="/admin" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Admin</NavLink>
+              )}
+            </>
+          )}
+        </nav>
     </header>
   );
 }

@@ -31,13 +31,13 @@ This playbook is the source of truth for testing the Emergent-managed Google aut
    - `/dashboard`, `/onboarding`, `/admin`, `/review`, `/certificates/:trackId` should accept the Google-issued JWT.
 
 4. **Legacy email/password login still works**
-   - `/api/auth/login` with the seeded admin (`admin@scienceofautonomy.app` / `autonomy2026`) must keep returning 200 with a JWT.
+   - `/api/auth/login` with the seeded admin (`admin@scienceofautonomy.app` / `[REDACTED: use configured ADMIN_PASSWORD]`) must keep returning 200 with a JWT.
 
 ## Quick backend smoke
 ```bash
 curl -X POST $REACT_APP_BACKEND_URL/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@scienceofautonomy.app","password":"autonomy2026"}'
+  -d '{"email":"admin@scienceofautonomy.app","password":"[REDACTED: use configured ADMIN_PASSWORD]"}'
 ```
 
 ## Critical implementation rules

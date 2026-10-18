@@ -5,11 +5,21 @@ import uuid
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://drone-science-learn.preview.emergentagent.com").rstrip("/")
+def completion_payload(session, api_url, lesson_id, correct=True):
+    response = session.get(f"{api_url}/lessons/{lesson_id}")
+    if response.status_code == 404:
+        return {"lesson_id": lesson_id, "answers": []}
+    response.raise_for_status()
+    quiz = response.json().get("quiz", [])
+    answers = [q["answer"] if correct else (q["answer"] + 1) % len(q["options"]) for q in quiz]
+    return {"lesson_id": lesson_id, "answers": answers}
+
+
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
 API = f"{BASE_URL}/api"
 
-ADMIN_EMAIL = "admin@scienceofautonomy.app"
-ADMIN_PASS = "autonomy2026"
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "")
+ADMIN_PASS = os.environ.get("ADMIN_PASSWORD", "")
 
 FOUNDATIONS_LESSONS = [
     "l-autonomy-ladder", "l-ooda-loop", "l-lift-drag", "l-airframes", "l-stability",
@@ -183,7 +193,7 @@ def test_certificate_eligible_after_completion_and_badges():
     pid_badges = set()
     five_badges = set()
     for i, lid in enumerate(FOUNDATIONS_LESSONS):
-        resp = s.post(f"{API}/progress/complete", json={"lesson_id": lid, "score": 1.0})
+        resp = s.post(f"{API}/progress/complete", json=completion_payload(s, API, lid, correct=True))
         assert resp.status_code == 200, resp.text
         data = resp.json()
         assert "newBadges" in data and isinstance(data["newBadges"], list)
@@ -214,7 +224,7 @@ def test_control_theorist_badge_on_pid():
     r = s.post(f"{API}/auth/register", json={"email": email, "password": "TestPass123!", "name": "PIDer"})
     tok = r.json()["token"]
     s.headers.update({"Authorization": f"Bearer {tok}"})
-    resp = s.post(f"{API}/progress/complete", json={"lesson_id": "l-pid", "score": 1.0})
+    resp = s.post(f"{API}/progress/complete", json=completion_payload(s, API, "l-pid", correct=True))
     assert resp.status_code == 200
     me = s.get(f"{API}/auth/me").json()["user"]
     assert "control-theorist" in me["badges"], f"control-theorist not earned: {me['badges']}"

@@ -35,7 +35,7 @@
     "/app/test_reports/pytest/pytest_iter5_all.xml (generated — full 70-test regression)"
   ],
   "success_rate": {"backend": "100% (70/70 across phases 1-5; 12/12 new Phase 5)", "frontend": "100% of requested Phase-5 simulator flows verified (19/19 Playwright checks); Assessment intro+wiring verified, full quiz E2E not executed"},
-  "test_credentials": "Admin: admin@scienceofautonomy.app / autonomy2026. Phase-5 ad-hoc users TEST_p5a_*/TEST_p5b_*/TEST_p5fresh_* registered with password TestPass123!.",
+  "test_credentials": "Admin: admin@scienceofautonomy.app / [REDACTED: use configured ADMIN_PASSWORD]. Phase-5 ad-hoc users TEST_p5a_*/TEST_p5b_*/TEST_p5fresh_* registered with password TestPass123!.",
   "seed_data_creation": "Three new TEST_ users registered. user_a posted: precision-hover 12.0s/1gate, pylon-slalom 30.0s/6gates, no-gps-landing 20.0s/1gate. user_b posted: pylon-slalom 50.0s/6gates. user_fresh posted: gate-course-1 30.0s/5gates. user_a now leads pylon-slalom (30.0s).",
   "retest_needed": false,
   "main_agent_can_self_test": true,

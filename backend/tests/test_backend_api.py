@@ -4,7 +4,17 @@ import uuid
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://drone-science-learn.preview.emergentagent.com").rstrip("/")
+def completion_payload(session, api_url, lesson_id, correct=True):
+    response = session.get(f"{api_url}/lessons/{lesson_id}")
+    if response.status_code == 404:
+        return {"lesson_id": lesson_id, "answers": []}
+    response.raise_for_status()
+    quiz = response.json().get("quiz", [])
+    answers = [q["answer"] if correct else (q["answer"] + 1) % len(q["options"]) for q in quiz]
+    return {"lesson_id": lesson_id, "answers": answers}
+
+
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
 API = f"{BASE_URL}/api"
 
 
@@ -110,7 +120,7 @@ def test_me_without_token(s):
 
 
 def test_admin_login(s):
-    r = s.post(f"{API}/auth/login", json={"email": "admin@scienceofautonomy.app", "password": "autonomy2026"})
+    r = s.post(f"{API}/auth/login", json={"email": os.environ.get("ADMIN_EMAIL", ""), "password": os.environ.get("ADMIN_PASSWORD", "")})
     assert r.status_code == 200, r.text
     assert r.json()["user"]["role"] == "admin"
 
@@ -119,7 +129,7 @@ def test_admin_login(s):
 def test_complete_lesson_awards_xp(s, auth_headers, test_user):
     # Clear cookies so Bearer auth is honored (cookie takes precedence in get_current_user)
     s.cookies.clear()
-    r = s.post(f"{API}/progress/complete", json={"lesson_id": "l-pid", "score": 1.0}, headers=auth_headers)
+    r = s.post(f"{API}/progress/complete", json=completion_payload(s, API, "l-pid", correct=True), headers=auth_headers)
     assert r.status_code == 200, r.text
     body = r.json()
     awarded = body["xpAwarded"]
@@ -136,13 +146,13 @@ def test_complete_lesson_awards_xp(s, auth_headers, test_user):
 
 def test_complete_lesson_idempotent(s, auth_headers):
     # second call should NOT re-award xp
-    r = s.post(f"{API}/progress/complete", json={"lesson_id": "l-pid", "score": 1.0}, headers=auth_headers)
+    r = s.post(f"{API}/progress/complete", json=completion_payload(s, API, "l-pid", correct=True), headers=auth_headers)
     assert r.status_code == 200
     assert r.json()["xpAwarded"] == 0
 
 
 def test_complete_bad_lesson(s, auth_headers):
-    r = s.post(f"{API}/progress/complete", json={"lesson_id": "bogus-id", "score": 0.5}, headers=auth_headers)
+    r = s.post(f"{API}/progress/complete", json=completion_payload(s, API, "bogus-id", correct=False), headers=auth_headers)
     assert r.status_code == 404
 
 

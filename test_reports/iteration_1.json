@@ -30,7 +30,7 @@
     "/app/test_reports/pytest/pytest_results.xml (generated)"
   ],
   "success_rate": {"backend": "100% (16/16)", "frontend": "100% of requested flows"},
-  "test_credentials": "Admin seed verified: admin@scienceofautonomy.app / autonomy2026 — login returns role=admin. Fresh test users registered as TEST_user_*/TEST_ui_*/TEST_flow_* with password TestPass123!. NOTE: /app/memory/test_credentials.md does not exist; consider adding one.",
+  "test_credentials": "Admin seed verified: admin@scienceofautonomy.app / [REDACTED: use configured ADMIN_PASSWORD] — login returns role=admin. Fresh test users registered as TEST_user_*/TEST_ui_*/TEST_flow_* with password TestPass123!. NOTE: /app/memory/test_credentials.md does not exist; consider adding one.",
   "seed_data_creation": "No new seed data created. Tests create TEST_-prefixed users on the fly; not cleaned up afterwards (acceptable for MVP but consider a teardown).",
   "retest_needed": false,
   "main_agent_can_self_test": true,

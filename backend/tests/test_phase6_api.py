@@ -18,8 +18,8 @@ def admin_token(s):
     r = s.post(
         f"{API}/auth/login",
         json={
-            "email": os.environ.get("ADMIN_EMAIL", "admin@scienceofautonomy.app"),
-            "password": os.environ.get("ADMIN_PASSWORD", "autonomy2026"),
+            "email": os.environ.get("ADMIN_EMAIL", ""),
+            "password": os.environ.get("ADMIN_PASSWORD", ""),
         },
     )
     assert r.status_code == 200, r.text
