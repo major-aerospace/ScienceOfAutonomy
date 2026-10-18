@@ -9,13 +9,6 @@ export function AuthProvider({ children }) {
   const [ready, setReady] = useState(false);
 
   const refresh = useCallback(async () => {
-    // Skip the bootstrap /me probe if we're on the Google OAuth callback —
-    // AuthCallback will exchange the session_id and set the JWT. Avoids a
-    // 401 race condition that flips us to "logged out" before the exchange completes.
-    if (typeof window !== "undefined" && window.location.pathname === "/auth/callback") {
-      setReady(true);
-      return;
-    }
     // Skip the bootstrap /me probe if we have no token — avoids harmless 401 noise.
     const token = typeof window !== "undefined" ? localStorage.getItem("soa_token") : null;
     if (!token) {
@@ -51,6 +44,14 @@ export function AuthProvider({ children }) {
     ensureStreakReminderScheduled().catch(() => {});
     return data.user;
   };
+  // `credential` is the Google ID token from Google Identity Services.
+  const loginWithGoogle = async (credential) => {
+    const { data } = await api.post("/auth/google", { credential });
+    if (data.token) localStorage.setItem("soa_token", data.token);
+    setUser(data.user);
+    ensureStreakReminderScheduled().catch(() => {});
+    return data; // { user, token, isNewUser }
+  };
   const logout = async () => {
     try { await api.post("/auth/logout"); } catch (e) {}
     localStorage.removeItem("soa_token");
@@ -64,7 +65,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthCtx.Provider value={{ user, ready, refresh, login, register, logout, setGoal, setUser }}>
+    <AuthCtx.Provider value={{ user, ready, refresh, login, register, loginWithGoogle, logout, setGoal, setUser }}>
       {children}
     </AuthCtx.Provider>
   );

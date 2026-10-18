@@ -13,7 +13,7 @@ import uuid
 import pytest
 import requests
 
-BASE_URL = os.environ["REACT_APP_BACKEND_URL"].rstrip("/")
+BASE_URL = (os.environ.get("BACKEND_URL") or os.environ.get("REACT_APP_BACKEND_URL") or "http://localhost:8001").rstrip("/")
 API = f"{BASE_URL}/api"
 
 REQUIRED_MISSIONS = {"gate-course-1", "precision-hover", "pylon-slalom", "no-gps-landing"}

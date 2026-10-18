@@ -39,7 +39,7 @@
     "/app/test_reports/iteration_7.json (this file)"
   ],
   "success_rate": {"backend": "100% (83/83)", "frontend": "100% — FIX 1 + FIX 2 (banner+caption+takeaway+button-highlight+reload-persistence+unauthored-marker) + FIX 3 (FAQ 8 items, default open, expand/collapse) all verified; admin JWT login verified at API level + UI form fills correctly."},
-  "test_credentials": "Admin: admin@scienceofautonomy.app / autonomy2026 (verified via API).",
+  "test_credentials": "Admin: admin@scienceofautonomy.app / [redacted] (verified via API).",
   "seed_data_creation": "None. The 3 fixes are all UI/widget level; backend variants were already in seed_data.py from the main agent's change and load on backend start.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

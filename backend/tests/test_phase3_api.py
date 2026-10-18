@@ -5,11 +5,12 @@ import uuid
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://drone-science-learn.preview.emergentagent.com").rstrip("/")
+BASE_URL = (os.environ.get("BACKEND_URL") or os.environ.get("REACT_APP_BACKEND_URL") or "http://localhost:8001").rstrip("/")
 API = f"{BASE_URL}/api"
 
-ADMIN_EMAIL = "admin@scienceofautonomy.app"
-ADMIN_PASS = "autonomy2026"
+# Admin credentials come from the environment — never hard-code them.
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL")
+ADMIN_PASS = os.environ.get("ADMIN_PASSWORD")
 
 FOUNDATIONS_LESSONS = [
     "l-autonomy-ladder", "l-ooda-loop", "l-lift-drag", "l-airframes", "l-stability",
@@ -43,6 +44,8 @@ def user():
 
 @pytest.fixture(scope="module")
 def admin():
+    if not (ADMIN_EMAIL and ADMIN_PASS):
+        pytest.skip("Set ADMIN_EMAIL and ADMIN_PASSWORD to run admin tests")
     s = _new_session()
     r = s.post(f"{API}/auth/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASS})
     assert r.status_code == 200, f"admin login failed: {r.text}"

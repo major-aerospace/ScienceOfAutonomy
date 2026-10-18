@@ -27,7 +27,7 @@ const config = {
   },
   // Loading the latest preview URL keeps the wrapper a thin shell during early phases.
   // Comment out the `server` block to ship a fully-bundled APK against /build assets.
-  // server: { url: "https://drone-science-learn.preview.emergentagent.com", cleartext: false },
+  // server: { url: "https://<your-frontend-domain>", cleartext: false },
 };
 
 module.exports = config;
