@@ -1,11 +1,12 @@
-"""Phase 6 — Content Studio cards, CMS overrides, Google Auth surface."""
+"""Phase 6 — Content Studio cards, CMS overrides, Google sign-in surface."""
 import os
 import uuid
 
 import pytest
 import requests
 
-API = os.environ["REACT_APP_BACKEND_URL"].rstrip("/") + "/api"
+BASE_URL = (os.environ.get("BACKEND_URL") or os.environ.get("REACT_APP_BACKEND_URL") or "http://localhost:8001").rstrip("/")
+API = f"{BASE_URL}/api"
 
 
 @pytest.fixture(scope="module")
@@ -15,13 +16,10 @@ def s():
 
 @pytest.fixture(scope="module")
 def admin_token(s):
-    r = s.post(
-        f"{API}/auth/login",
-        json={
-            "email": os.environ.get("ADMIN_EMAIL", "admin@scienceofautonomy.app"),
-            "password": os.environ.get("ADMIN_PASSWORD", "autonomy2026"),
-        },
-    )
+    email, password = os.environ.get("ADMIN_EMAIL"), os.environ.get("ADMIN_PASSWORD")
+    if not (email and password):
+        pytest.skip("Set ADMIN_EMAIL and ADMIN_PASSWORD to run admin tests")
+    r = s.post(f"{API}/auth/login", json={"email": email, "password": password})
     assert r.status_code == 200, r.text
     return r.json()["token"]
 
@@ -31,23 +29,25 @@ def admin_headers(admin_token):
     return {"Authorization": f"Bearer {admin_token}"}
 
 
-# ---------------- Google Auth surface ----------------
+# ---------------- Google sign-in surface ----------------
 
 
-def test_google_session_missing_id(s):
+def test_google_missing_credential(s):
+    r = s.post(f"{API}/auth/google", json={})
+    assert r.status_code == 422
+
+
+def test_google_bogus_credential_rejected(s):
+    # A forged ID token must never sign anyone in: 401 when Google sign-in is
+    # configured, 503 when GOOGLE_CLIENT_ID is not set on the server.
+    r = s.post(f"{API}/auth/google", json={"credential": f"not-a-real-google-token-{uuid.uuid4().hex}"})
+    assert r.status_code in (401, 503)
+    assert "token" not in r.json()
+
+
+def test_emergent_google_session_endpoint_removed(s):
     r = s.post(f"{API}/auth/google-session", json={})
-    assert r.status_code == 400
-    assert "session_id" in r.json()["detail"].lower()
-
-
-def test_google_session_invalid_id(s):
-    # Bogus session_id reaches Emergent but should be rejected (401 from us).
-    r = s.post(
-        f"{API}/auth/google-session",
-        json={},
-        headers={"X-Session-ID": f"definitely-not-real-{uuid.uuid4().hex}"},
-    )
-    assert r.status_code in (401, 502)
+    assert r.status_code in (404, 405)
 
 
 def test_existing_jwt_login_still_works(s, admin_token):

@@ -31,7 +31,7 @@
     "/app/test_reports/pytest/pytest_iter2.xml (generated)"
   ],
   "success_rate": {"backend": "100% (27/27)", "frontend": "100% of requested Phase 2 flows"},
-  "test_credentials": "Admin: admin@scienceofautonomy.app / autonomy2026. Ad-hoc test users TEST_p2_*/TEST_ui_* registered with password TestPass123!.",
+  "test_credentials": "Admin: admin@scienceofautonomy.app / [redacted]. Ad-hoc test users TEST_p2_*/TEST_ui_* registered with password TestPass123!.",
   "seed_data_creation": "No new seed data. Tests register TEST_-prefixed users on demand; not cleaned up.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

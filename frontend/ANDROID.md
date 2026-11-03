@@ -28,6 +28,10 @@ npx cap sync
 npx cap open android
 ```
 
+### Before shipping the native build
+- Add the WebView's origin (`https://localhost` with Capacitor's default Android scheme) to the backend's `CORS_ORIGINS`.
+- Google blocks sign-in inside embedded WebViews, so the web Google button won't work in the native wrapper. Use a native Google sign-in plugin there, create an *Android* OAuth client, and add its client ID to the backend's `GOOGLE_CLIENT_ID` (comma-separated). Email/password sign-in works as-is.
+
 ## Streak push notifications
 
 `src/lib/notifications.js` registers a daily local notification at 19:00 via `@capacitor/local-notifications`. To enable it, the app calls `ensureStreakReminderScheduled()` after sign-in on a Capacitor-wrapped build. On the web, this is a no-op (web push requires a separate Notification API + service-worker push subscription setup that isn't wired in this MVP).
