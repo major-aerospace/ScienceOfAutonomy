@@ -1284,7 +1284,7 @@ async def on_shutdown():
 app.include_router(api)
 
 # The frontend authenticates with a Bearer token, so browsers only need CORS from the
-# deployed frontend origin(s). Set CORS_ORIGINS to e.g. "https://scienceofautonomy.pages.dev".
+# deployed frontend origin(s). Set CORS_ORIGINS to e.g. "https://science-of-autonomy.onrender.com".
 CORS_ORIGINS = [
     o.strip().rstrip("/")
     for o in os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")

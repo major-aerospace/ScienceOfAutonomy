@@ -4,7 +4,7 @@ A vendor-neutral, visual-first learning platform for the science of unmanned and
 
 | Part | Stack | Hosted on (free tier) |
 |---|---|---|
-| Frontend | React 19 · CRA/CRACO · Tailwind · react-three-fiber · Recharts | Cloudflare Pages |
+| Frontend | React 19 · CRA/CRACO · Tailwind · react-three-fiber · Recharts | Render (static site) |
 | Backend | FastAPI · Motor (MongoDB) · JWT auth · Google sign-in | Render |
 | Database | MongoDB | MongoDB Atlas M0 |
 
@@ -53,7 +53,7 @@ Backend (`backend/.env` locally, Render dashboard in production):
 | `GOOGLE_CLIENT_ID` | for Google sign-in | OAuth *Web application* client ID. Leave empty to turn Google sign-in off. |
 | `CORS_ORIGINS` | yes in prod | Frontend URL(s), comma-separated, no trailing slash. |
 
-Frontend (Cloudflare Pages build variables; they are baked in at build time, so **redeploy after changing them**):
+Frontend (Render static-site variables; they are baked in at build time, so **redeploy after changing them**):
 
 | Variable | Notes |
 |---|---|
@@ -71,33 +71,24 @@ Frontend (Cloudflare Pages build variables; they are baked in at build time, so 
 3. *Network Access*: allow `0.0.0.0/0`. Render's free tier has no fixed outbound IPs.
 4. *Connect → Drivers*: copy the `mongodb+srv://…` string and put the user's password into it.
 
-**2. Backend: Render**
-1. Render → **New → Blueprint** → choose this repo. `render.yaml` sets everything up.
+**2. API and website: Render**
+1. Render → **New → Blueprint** → connect GitHub and choose this repo. `render.yaml` creates both services: the API (`science-of-autonomy-api`) and the website (`science-of-autonomy`).
 2. Fill in the prompted values:
    - `MONGO_URL`: from step 1.
    - `ADMIN_EMAIL`, `ADMIN_PASSWORD`: use a password manager to generate 20+ characters.
-   - `GOOGLE_CLIENT_ID`: from step 3. You can add it later.
-   - `CORS_ORIGINS`: your Pages URL from step 4, e.g. `https://science-of-autonomy.pages.dev`.
-3. Wait for the deploy, then open `https://<service>.onrender.com/api/`. It should say `"status": "ok"`.
-   *Free instances sleep after about 15 minutes idle, so the first request after that takes up to a minute.*
+3. Wait for both deploys, then open `https://science-of-autonomy-api.onrender.com/api/`. It should say `"status": "ok"`.
+   *Free API instances sleep after about 15 minutes idle, so the first request after that takes up to a minute.*
+4. If Render gave either service a different `.onrender.com` address, update `CORS_ORIGINS` (API) and `REACT_APP_BACKEND_URL` (website) to the real addresses and redeploy the website.
 
-**3. Google sign-in: Google Cloud Console**
+**3. Google sign-in (optional): Google Cloud Console**
 1. **APIs & Services → OAuth consent screen**: choose External. Enter the app name *Science of Autonomy* and your support email. The scopes are the defaults (email, profile, openid). Then **Publish app**. Basic scopes need no Google review.
 2. **Credentials → Create credentials → OAuth client ID → Web application**.
-3. Under **Authorized JavaScript origins**, add `https://science-of-autonomy.pages.dev`, any custom domain, `http://localhost:3000` and `http://localhost`. No redirect URIs are needed.
-4. Copy the client ID into `GOOGLE_CLIENT_ID` on Render and into `REACT_APP_GOOGLE_CLIENT_ID` on Pages.
+3. Under **Authorized JavaScript origins**, add the website address (e.g. `https://science-of-autonomy.onrender.com`), any custom domain, `http://localhost:3000` and `http://localhost`. No redirect URIs are needed.
+4. On Render, add the client ID as `GOOGLE_CLIENT_ID` on the API and as `REACT_APP_GOOGLE_CLIENT_ID` on the website, then redeploy the website.
 
-**4. Frontend: Cloudflare Pages**
-1. **Workers & Pages → Create → Pages → Connect to Git** → this repo.
-2. Use these build settings:
-   - Framework preset: *Create React App*
-   - Root directory: `frontend`
-   - Build command: `yarn build`
-   - Output directory: `build`
-3. Set the environment variables: `REACT_APP_BACKEND_URL`, `REACT_APP_GOOGLE_CLIENT_ID`, and `NODE_VERSION=22`.
-4. Deploy. Single-page-app routing works out of the box.
+**4. Close the loop.** Open the website, sign in as admin and check `/admin`. A custom domain needs adding to `CORS_ORIGINS` and the Google origins too.
 
-**5. Close the loop.** Make sure the final Pages URL (and any custom domain) is in both `CORS_ORIGINS` on Render and the Google *Authorized JavaScript origins*. Then open the site, sign in as admin and check `/admin`.
+*Cloudflare Pages also works for the website: root directory `frontend`, build command `yarn build`, output `build`, the same `REACT_APP_*` variables plus `NODE_VERSION=22`.*
 
 ---
 
@@ -118,6 +109,6 @@ The app ships as an installable PWA. On Android Chrome, use **Install app**. Ico
 ```
 backend/    FastAPI app (server.py), auth, seed curriculum, tests/
 frontend/   React app (src/pages, src/components/widgets, src/lib)
-render.yaml Render blueprint for the API
+render.yaml Render blueprint for the API and website
 memory/     Product requirements history (PRD.md)
 ```

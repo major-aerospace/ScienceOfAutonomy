@@ -1,6 +1,10 @@
-# Render Blueprint for the backend API.
-# Render dashboard → New → Blueprint → select this repo. Render asks for every value
+# Render Blueprint — deploys the whole app on Render's free tier:
+#   science-of-autonomy-api  FastAPI backend (web service, Singapore)
+#   science-of-autonomy      React website (static site on Render's CDN)
+# Render dashboard → New → Blueprint → select this repo. Render asks for the values
 # marked `sync: false`; JWT_SECRET is generated for you.
+# If Render gives either service a different .onrender.com address than the names
+# below, update CORS_ORIGINS / REACT_APP_BACKEND_URL to match and redeploy.
 services:
   - type: web
     name: science-of-autonomy-api
@@ -11,7 +15,7 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/
-    autoDeploy: true
+    autoDeployTrigger: commit
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
@@ -25,7 +29,25 @@ services:
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
-      - key: GOOGLE_CLIENT_ID
-        sync: false
       - key: CORS_ORIGINS
-        sync: false
+        value: https://science-of-autonomy.onrender.com
+      # Add GOOGLE_CLIENT_ID in the dashboard once you create a Google OAuth client.
+
+  - type: web
+    name: science-of-autonomy
+    runtime: static
+    rootDir: frontend
+    buildCommand: yarn install --frozen-lockfile && yarn build
+    staticPublishPath: build
+    autoDeployTrigger: commit
+    routes:
+      # Single-page app: unknown paths serve index.html (real files are served first).
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: REACT_APP_BACKEND_URL
+        value: https://science-of-autonomy-api.onrender.com
+      # Add REACT_APP_GOOGLE_CLIENT_ID in the dashboard (then redeploy) to show the Google button.
